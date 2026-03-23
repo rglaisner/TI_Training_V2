@@ -15,6 +15,7 @@ import {
   type MentorResponse,
   type MissionEvent,
   type MissionState,
+  NodeContextSchema,
   type NodeContext,
   type ProfileMetrics,
   type TICompetency,
@@ -23,6 +24,11 @@ import { createDefaultProfileMetrics } from './domain';
 import type { AuthContext, AuthResolver } from './auth';
 import type { EvaluationEngine } from './evaluator';
 import type { MissionPersistence, SessionRecord } from './persistence';
+import {
+  createTerminalNodeContext,
+  getScenarioNode,
+  isScenarioSupported,
+} from './scenarioCatalog';
 
 interface AppDeps {
   authResolver: AuthResolver;
@@ -47,13 +53,15 @@ function createNodeContext(params: {
     targetCompetencies: TICompetency[];
     evaluationPrompt: string;
   };
+  branchingOptions?: { choiceKey: string; label: string }[];
 }): NodeContext {
-  return {
+  return NodeContextSchema.parse({
     nodeId: params.nodeId,
     type: params.type,
     sceneText: params.sceneText,
     openInputConfig: params.openInputConfig,
-  };
+    branchingOptions: params.branchingOptions,
+  });
 }
 
 function buildMissionState(params: {
@@ -179,15 +187,32 @@ export function createApp(deps: AppDeps) {
         (await deps.persistence.getProfile(authContext.tenantId, authContext.userId)) ??
         createDefaultProfileMetrics();
 
-      const currentNode = createNodeContext({
-        nodeId: 'node-1',
-        type: 'open_input',
-        sceneText: `Scenario ${parsed.data.scenarioId}: explain your first decision.`,
-        openInputConfig: {
-          targetCompetencies: ['ti_data_integrity'],
-          evaluationPrompt: 'Evaluate response using strict JSON contract.',
-        },
-      });
+      if (!isScenarioSupported(parsed.data.scenarioId)) {
+        sendApiError(
+          reply,
+          {
+            code: 'UNKNOWN_SCENARIO',
+            message: `Unknown scenario: ${parsed.data.scenarioId}`,
+            requestId,
+          },
+          404,
+        );
+        return;
+      }
+
+      const currentNode = getScenarioNode(parsed.data.scenarioId, 'node-1');
+      if (!currentNode) {
+        sendApiError(
+          reply,
+          {
+            code: 'SCENARIO_CONFIG',
+            message: 'Scenario has no start node configured',
+            requestId,
+          },
+          500,
+        );
+        return;
+      }
 
       const sessionRecord: SessionRecord = {
         tenantId: authContext.tenantId,
@@ -308,7 +333,7 @@ export function createApp(deps: AppDeps) {
         return;
       }
 
-      if (payload.nodeId !== session.currentNodeId) {
+      if (payload.nodeId.trim() !== session.currentNodeId.trim()) {
         await deps.persistence.appendEvent(
           createDecisionRejectedEvent({
             context: authContext,
@@ -407,23 +432,26 @@ export function createApp(deps: AppDeps) {
       );
 
       const isTerminal = nextTurnId >= 2;
-      const nextNode = isTerminal
-        ? createNodeContext({
-            nodeId: 'terminal-1',
-            type: 'branching',
-            sceneText: 'Mission complete. Review your dossier.',
-          })
-        : createNodeContext({
-            nodeId: `node-${nextTurnId + 1}`,
-            type: isOpenInput ? 'branching' : 'open_input',
-            sceneText: 'Next challenge: choose with evidence.',
-            openInputConfig: !isOpenInput
-              ? {
-                  targetCompetencies: ['ti_data_integrity'],
-                  evaluationPrompt: 'Evaluate response with strict JSON output',
-                }
-              : undefined,
-          });
+      let nextNode: NodeContext;
+      if (isTerminal) {
+        nextNode = createTerminalNodeContext();
+      } else {
+        const nextId = `node-${nextTurnId + 1}`;
+        const resolved = getScenarioNode(session.scenarioId, nextId);
+        if (!resolved) {
+          sendApiError(
+            reply,
+            {
+              code: 'SCENARIO_CONFIG',
+              message: `Scenario is missing configured node ${nextId}`,
+              requestId,
+            },
+            500,
+          );
+          return;
+        }
+        nextNode = resolved;
+      }
 
       const missionState = buildMissionState({
         sessionId: session.sessionId,
@@ -546,7 +574,7 @@ export function createApp(deps: AppDeps) {
         return;
       }
 
-      if (payload.nodeId !== session.currentNodeId) {
+      if (payload.nodeId.trim() !== session.currentNodeId.trim()) {
         sendApiError(
           reply,
           {
@@ -575,21 +603,31 @@ export function createApp(deps: AppDeps) {
         return;
       }
 
-      // Mentor must not advance the node graph.
-      const missionState = buildMissionState({
-        sessionId: session.sessionId,
-        currentNode: createNodeContext({
+      // Mentor must not advance the node graph — restore full scenario copy for this node.
+      const restoredNode =
+        getScenarioNode(session.scenarioId, session.currentNodeId) ??
+        createNodeContext({
           nodeId: session.currentNodeId,
           type: session.currentNodeType,
-          sceneText: 'Mentor guidance active.',
+          sceneText: 'This step has no scenario copy on the server yet.',
           openInputConfig:
             session.currentNodeType === 'open_input'
               ? {
-                  targetCompetencies: ['ti_data_integrity'],
+                  targetCompetencies: ['ti_data_integrity' as TICompetency],
                   evaluationPrompt: 'Mentor guidance only',
                 }
               : undefined,
-        }),
+          branchingOptions:
+            session.currentNodeType === 'branching'
+              ? [
+                  { choiceKey: 'option_a', label: 'Option A' },
+                  { choiceKey: 'option_b', label: 'Option B' },
+                ]
+              : undefined,
+        });
+      const missionState = buildMissionState({
+        sessionId: session.sessionId,
+        currentNode: restoredNode,
         profileMetrics: session.profileMetrics,
         isTerminal: session.isTerminal,
       });
@@ -609,7 +647,7 @@ export function createApp(deps: AppDeps) {
         profileHash: authContext.profileHash,
         sessionId: session.sessionId,
         nodeId: session.currentNodeId,
-        turnId: session.turnId + 1,
+        turnId: session.turnId,
         correlationId: requestId,
         scenarioId: session.scenarioId,
       });
@@ -623,7 +661,7 @@ export function createApp(deps: AppDeps) {
               : 'Mentor hint: start with your decision, then defend it with one metric and one risk.',
         },
         meta: {
-          turnId: session.turnId + 1,
+          turnId: session.turnId,
           evaluatedAt: nowIso(),
         },
       };

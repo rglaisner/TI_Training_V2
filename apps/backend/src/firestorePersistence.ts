@@ -1,9 +1,31 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import type { MissionEvent, MissionState, ProfileMetrics } from '@ti-training/shared';
 import type { MissionPersistence, SessionRecord } from './persistence';
+import { SessionRecordSchema } from './sessionRecordSchema';
 
 function cacheId(sessionId: string, nodeId: string, clientSubmissionId: string): string {
   return `${sessionId}__${nodeId}__${clientSubmissionId}`;
+}
+
+/** Firestore ignores or rejects `undefined`; strip so we never write half-shaped session docs. */
+function stripUndefinedDeep(value: unknown): unknown {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedDeep(item));
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (child === undefined) {
+      continue;
+    }
+    out[key] = stripUndefinedDeep(child);
+  }
+  return out;
 }
 
 function tenantCollection(db: Firestore, tenantId: string, name: string) {
@@ -18,13 +40,24 @@ export class FirestorePersistence implements MissionPersistence {
     if (!doc.exists) {
       return null;
     }
-    return doc.data() as SessionRecord;
+    const parsed = SessionRecordSchema.safeParse(doc.data());
+    if (!parsed.success) {
+      console.error({
+        event: 'SESSION_FIRESTORE_SHAPE_INVALID',
+        tenantId,
+        sessionId,
+        issues: parsed.error.issues,
+      });
+      return null;
+    }
+    return parsed.data;
   }
 
   async upsertSession(record: SessionRecord): Promise<void> {
+    const payload = stripUndefinedDeep(record) as Record<string, unknown>;
     await tenantCollection(this.db, record.tenantId, 'sessions')
       .doc(record.sessionId)
-      .set(record, { merge: true });
+      .set(payload, { merge: false });
   }
 
   async getProfile(tenantId: string, userId: string): Promise<ProfileMetrics | null> {

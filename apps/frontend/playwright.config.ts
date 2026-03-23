@@ -9,7 +9,8 @@ export default defineConfig({
   },
   webServer: {
     command: 'npm run dev',
-    port: 3000,
+    // Match baseURL so reuse detection works when something is already listening on :3000.
+    url: 'http://127.0.0.1:3000',
     reuseExistingServer: true,
     timeout: 120000,
     // E2E mocks the API; use test-auth headers + placeholder web config (not for real Firebase).
@@ -17,6 +18,8 @@ export default defineConfig({
       NEXT_PUBLIC_USE_TEST_AUTH: 'true',
       NEXT_PUBLIC_TEST_TENANT_ID: 'e2e-tenant',
       NEXT_PUBLIC_TEST_USER_ID: 'e2e-user',
+      // Relative `/api/...` fetches match page.route by pathname (works with any host:port).
+      NEXT_PUBLIC_API_BASE_URL: '',
       NEXT_PUBLIC_FIREBASE_API_KEY: 'playwright-e2e-placeholder',
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: 'playwright-e2e.local',
       NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'playwright-e2e',

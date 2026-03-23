@@ -3,8 +3,38 @@ import {
   DecisionRequestSchema,
   EvaluationJsonSchema,
   MissionEventSchema,
+  NodeContextSchema,
   normalizeScoreTo100,
 } from './contracts';
+
+describe('NodeContextSchema', () => {
+  it('accepts terminal branching summary without choice labels', () => {
+    const parsed = NodeContextSchema.safeParse({
+      nodeId: 'terminal-1',
+      type: 'branching',
+      sceneText: 'Done.',
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('requires branchingOptions for non-terminal branching nodes', () => {
+    const parsed = NodeContextSchema.safeParse({
+      nodeId: 'node-1',
+      type: 'branching',
+      sceneText: 'Choose',
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('requires openInputConfig for open_input nodes', () => {
+    const parsed = NodeContextSchema.safeParse({
+      nodeId: 'node-2',
+      type: 'open_input',
+      sceneText: 'Type',
+    });
+    expect(parsed.success).toBe(false);
+  });
+});
 
 describe('DecisionRequestSchema', () => {
   it('accepts branching choice payload', () => {

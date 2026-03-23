@@ -21,6 +21,7 @@ export default function HomePage() {
   } = useMissionStore();
 
   const isOpenInputNode = missionState?.currentNode.type === 'open_input';
+  const isBranchingNode = missionState?.currentNode.type === 'branching';
   const isTerminal = missionState?.isTerminal === true;
 
   const canCallMissionApi = apiIdentityBypassed || user !== null;
@@ -59,7 +60,7 @@ export default function HomePage() {
         <section className="mt-4 grid gap-4 md:grid-cols-2">
           <article data-testid="narrative-region" className="rounded border border-zinc-700 p-4">
             <h2 className="font-medium">Narrative</h2>
-            <p data-testid="scene-text" className="mt-2">
+            <p data-testid="scene-text" className="mt-2 whitespace-pre-line">
               {missionState.currentNode.sceneText}
             </p>
           </article>
@@ -85,7 +86,9 @@ export default function HomePage() {
 
           <article data-testid="input-region" className="rounded border border-zinc-700 p-4 md:col-span-2">
             <h2 className="font-medium">Input</h2>
-            {isOpenInputNode ? (
+            {isTerminal ? (
+              <p className="mt-2 text-sm text-zinc-400">This scenario is complete — see the dossier below.</p>
+            ) : isOpenInputNode ? (
               <>
                 <textarea
                   data-testid="open-input"
@@ -104,26 +107,25 @@ export default function HomePage() {
                   Submit Decision
                 </button>
               </>
-            ) : (
-              <div className="mt-2 flex gap-2">
-                <button
-                  data-testid="choice-option-a"
-                  className="rounded bg-green-700 px-3 py-2"
-                  onClick={() => void submitBranchingChoice('option_a')}
-                  disabled={isSubmitting}
-                >
-                  Option A
-                </button>
-                <button
-                  data-testid="choice-option-b"
-                  className="rounded bg-zinc-700 px-3 py-2"
-                  onClick={() => void submitBranchingChoice('option_b')}
-                  disabled={isSubmitting}
-                >
-                  Option B
-                </button>
+            ) : isBranchingNode ? (
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                {(missionState.currentNode.branchingOptions ?? [
+                  { choiceKey: 'option_a', label: 'Option A' },
+                  { choiceKey: 'option_b', label: 'Option B' },
+                ]).map((opt) => (
+                  <button
+                    key={opt.choiceKey}
+                    data-testid={`choice-${opt.choiceKey}`}
+                    type="button"
+                    className="rounded bg-green-700 px-3 py-2 text-left text-sm sm:max-w-md"
+                    onClick={() => void submitBranchingChoice(opt.choiceKey)}
+                    disabled={isSubmitting}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
-            )}
+            ) : null}
           </article>
 
           {isTerminal ? (

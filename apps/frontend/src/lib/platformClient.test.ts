@@ -38,12 +38,12 @@ describe('PlatformClient', () => {
               sessionId: 's1',
               currentNode: {
                 nodeId: 'node-1',
-                type: 'open_input',
+                type: 'branching',
                 sceneText: 'Scene',
-                openInputConfig: {
-                  targetCompetencies: ['ti_data_integrity'],
-                  evaluationPrompt: 'Prompt',
-                },
+                branchingOptions: [
+                  { choiceKey: 'option_a', label: 'A' },
+                  { choiceKey: 'option_b', label: 'B' },
+                ],
               },
               profileMetrics: {
                 categoryScores: {
@@ -111,12 +111,12 @@ describe('PlatformClient', () => {
             sessionId: 's1',
             currentNode: {
               nodeId: 'node-1',
-              type: 'open_input',
+              type: 'branching',
               sceneText: 'Scene',
-              openInputConfig: {
-                targetCompetencies: ['ti_data_integrity'],
-                evaluationPrompt: 'Prompt',
-              },
+              branchingOptions: [
+                { choiceKey: 'option_a', label: 'A' },
+                { choiceKey: 'option_b', label: 'B' },
+              ],
             },
             profileMetrics: {
               categoryScores: {

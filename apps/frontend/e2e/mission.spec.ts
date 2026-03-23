@@ -13,17 +13,32 @@ const competencies = Object.fromEntries(
   ]),
 );
 
+/** Playwright matches RegExp against the full request URL (any host/port). */
+const missionStartUrl = /\/api\/missions\/start(\?|#|$)/;
+const missionDecisionUrl = /\/api\/missions\/decision(\?|#|$)/;
+const missionMentorUrl = /\/api\/missions\/mentor(\?|#|$)/;
+
+const openInputNode2 = {
+  nodeId: 'node-2',
+  type: 'open_input',
+  sceneText: 'CHRO follow-up: what do you say out loud?',
+  openInputConfig: {
+    targetCompetencies: ['ti_data_integrity'],
+    evaluationPrompt: 'Evaluate',
+  },
+};
+
 const startResponse = {
   missionState: {
     sessionId: 'session-1',
     currentNode: {
       nodeId: 'node-1',
-      type: 'open_input',
-      sceneText: 'Initial open-input challenge',
-      openInputConfig: {
-        targetCompetencies: ['ti_data_integrity'],
-        evaluationPrompt: 'Evaluate',
-      },
+      type: 'branching',
+      sceneText: 'Northbridge Labs hiring freeze — choose your first move.',
+      branchingOptions: [
+        { choiceKey: 'option_a', label: 'Brief the CHRO tonight with ranges only' },
+        { choiceKey: 'option_b', label: 'Wait for Legal before any numbers' },
+      ],
     },
     profileMetrics: {
       categoryScores: {
@@ -56,29 +71,30 @@ const startResponse = {
 };
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/missions/start', async (route) => {
-    await route.fulfill({ status: 200, body: JSON.stringify(startResponse) });
+  await page.route(missionStartUrl, async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(startResponse),
+    });
   });
 });
 
 test('starts mission from scenario selection', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('scenario-card').click();
-  await expect(page.getByTestId('scene-text')).toHaveText('Initial open-input challenge');
+  await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
 });
 
-test('open-input success advances the scene', async ({ page }) => {
-  await page.route('**/api/missions/decision', async (route) => {
+test('branching choice then open-input advances the scene', async ({ page }) => {
+  await page.route(missionDecisionUrl, async (route) => {
     await route.fulfill({
       status: 200,
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         missionState: {
           ...startResponse.missionState,
-          currentNode: {
-            nodeId: 'node-2',
-            type: 'branching',
-            sceneText: 'Branching challenge',
-          },
+          currentNode: openInputNode2,
           isTerminal: false,
         },
       }),
@@ -86,16 +102,32 @@ test('open-input success advances the scene', async ({ page }) => {
   });
   await page.goto('/');
   await page.getByTestId('scenario-card').click();
-  await page.getByTestId('open-input').fill('A clear BLUF answer.');
-  await page.getByTestId('submit-button').click();
-  await expect(page.getByTestId('scene-text')).toHaveText('Branching challenge');
+  await page.getByTestId('choice-option_a').click();
+  await expect(page.getByTestId('scene-text')).toHaveText('CHRO follow-up: what do you say out loud?');
   await expect(page.getByTestId('error-banner')).toHaveCount(0);
 });
 
-test('invalid evaluation contract shows retry-safe error and no advance', async ({ page }) => {
-  await page.route('**/api/missions/decision', async (route) => {
+test('invalid evaluation contract shows retry-safe error and no advance on open input', async ({ page }) => {
+  let decisionCalls = 0;
+  await page.route(missionDecisionUrl, async (route) => {
+    decisionCalls += 1;
+    if (decisionCalls === 1) {
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          missionState: {
+            ...startResponse.missionState,
+            currentNode: openInputNode2,
+            isTerminal: false,
+          },
+        }),
+      });
+      return;
+    }
     await route.fulfill({
       status: 422,
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         code: 'EVAL_JSON_INVALID',
         message: 'We could not evaluate that turn',
@@ -105,16 +137,18 @@ test('invalid evaluation contract shows retry-safe error and no advance', async 
   });
   await page.goto('/');
   await page.getByTestId('scenario-card').click();
+  await page.getByTestId('choice-option_a').click();
   await page.getByTestId('open-input').fill('My answer');
   await page.getByTestId('submit-button').click();
   await expect(page.getByTestId('error-banner')).toBeVisible();
-  await expect(page.getByTestId('scene-text')).toHaveText('Initial open-input challenge');
+  await expect(page.getByTestId('scene-text')).toHaveText('CHRO follow-up: what do you say out loud?');
 });
 
 test('mentor invocation does not advance node', async ({ page }) => {
-  await page.route('**/api/missions/mentor', async (route) => {
+  await page.route(missionMentorUrl, async (route) => {
     await route.fulfill({
       status: 200,
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         missionState: startResponse.missionState,
         mentorHint: { message: 'Mentor hint message' },
@@ -124,14 +158,31 @@ test('mentor invocation does not advance node', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('scenario-card').click();
   await page.getByTestId('mentor-button').click();
-  await expect(page.getByTestId('scene-text')).toHaveText('Initial open-input challenge');
+  await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
   await expect(page.getByTestId('mentor-hint-region')).toContainText('Mentor hint message');
 });
 
 test('terminal mission renders dossier section', async ({ page }) => {
-  await page.route('**/api/missions/decision', async (route) => {
+  let decisionCalls = 0;
+  await page.route(missionDecisionUrl, async (route) => {
+    decisionCalls += 1;
+    if (decisionCalls === 1) {
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          missionState: {
+            ...startResponse.missionState,
+            currentNode: openInputNode2,
+            isTerminal: false,
+          },
+        }),
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         missionState: {
           ...startResponse.missionState,
@@ -147,23 +198,21 @@ test('terminal mission renders dossier section', async ({ page }) => {
   });
   await page.goto('/');
   await page.getByTestId('scenario-card').click();
+  await page.getByTestId('choice-option_a').click();
   await page.getByTestId('open-input').fill('terminal answer');
   await page.getByTestId('submit-button').click();
   await expect(page.getByTestId('terminal-dossier')).toBeVisible();
 });
 
-test('idempotent replay keeps consistent state', async ({ page }) => {
-  await page.route('**/api/missions/decision', async (route) => {
+test('after branching, open-input step shows textarea not branching buttons', async ({ page }) => {
+  await page.route(missionDecisionUrl, async (route) => {
     await route.fulfill({
       status: 200,
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         missionState: {
           ...startResponse.missionState,
-          currentNode: {
-            nodeId: 'node-2',
-            type: 'branching',
-            sceneText: 'Replay-safe scene',
-          },
+          currentNode: openInputNode2,
           isTerminal: false,
         },
       }),
@@ -171,9 +220,7 @@ test('idempotent replay keeps consistent state', async ({ page }) => {
   });
   await page.goto('/');
   await page.getByTestId('scenario-card').click();
-  await page.getByTestId('open-input').fill('repeat');
-  await page.getByTestId('submit-button').click();
-  await expect(page.getByTestId('scene-text')).toHaveText('Replay-safe scene');
-  await page.getByTestId('choice-option-a').click();
-  await expect(page.getByTestId('scene-text')).toHaveText('Replay-safe scene');
+  await page.getByTestId('choice-option_a').click();
+  await expect(page.getByTestId('open-input')).toBeVisible();
+  await expect(page.getByTestId('choice-option_a')).toHaveCount(0);
 });

@@ -55,11 +55,18 @@ export interface NodeOpenInputConfig {
   evaluationPrompt: string;
 }
 
+export interface BranchingOption {
+  choiceKey: string;
+  label: string;
+}
+
 export interface NodeContext {
   nodeId: string;
   type: NodeType;
   sceneText: string;
   openInputConfig?: NodeOpenInputConfig;
+  /** Shown when `type === 'branching'` (except terminal summary nodes). */
+  branchingOptions?: BranchingOption[];
 }
 
 export interface MissionState {
@@ -198,12 +205,37 @@ export const NodeOpenInputConfigSchema = z.object({
   evaluationPrompt: z.string().min(1),
 });
 
-export const NodeContextSchema = z.object({
-  nodeId: z.string().min(1),
-  type: NodeTypeSchema,
-  sceneText: z.string().min(1),
-  openInputConfig: NodeOpenInputConfigSchema.optional(),
+export const BranchingOptionSchema = z.object({
+  choiceKey: z.string().min(1),
+  label: z.string().min(1),
 });
+
+export const NodeContextSchema = z
+  .object({
+    nodeId: z.string().min(1),
+    type: NodeTypeSchema,
+    sceneText: z.string().min(1),
+    openInputConfig: NodeOpenInputConfigSchema.optional(),
+    branchingOptions: z.array(BranchingOptionSchema).optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.type === 'open_input' && !val.openInputConfig) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'open_input nodes require openInputConfig',
+        path: ['openInputConfig'],
+      });
+    }
+    if (val.type === 'branching' && val.nodeId !== 'terminal-1') {
+      if (!val.branchingOptions || val.branchingOptions.length < 2) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'branching nodes require at least two branchingOptions (except terminal-1)',
+          path: ['branchingOptions'],
+        });
+      }
+    }
+  });
 
 export const MissionStateSchema = z.object({
   sessionId: z.string().min(1),

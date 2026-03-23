@@ -62,7 +62,7 @@ describe('mission contracts', () => {
         sessionId: missionState.sessionId,
         nodeId: missionState.currentNode.nodeId,
         clientSubmissionId: 'sub-1',
-        openInput: { inputText: 'Decision with enough detail for strict validation.' },
+        branchingChoice: { choiceKey: 'option_a' },
       },
     });
 
@@ -77,7 +77,7 @@ describe('mission contracts', () => {
         sessionId: missionState.sessionId,
         nodeId: missionState.currentNode.nodeId,
         clientSubmissionId: 'sub-1',
-        openInput: { inputText: 'Decision with enough detail for strict validation.' },
+        branchingChoice: { choiceKey: 'option_a' },
       },
     });
 
