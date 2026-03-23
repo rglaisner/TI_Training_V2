@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+Before any commit or handover to the user, explain all newly developped functions in non-technical terms, then refactor for maximum readability, highlighting potential edge cases.

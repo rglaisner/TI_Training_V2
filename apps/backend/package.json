@@ -1,0 +1,25 @@
+{
+  "name": "@ti-training/backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo \"no lint config yet\"",
+    "test": "echo \"no tests yet\""
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.0",
+    "@ti-training/shared": "0.0.0",
+    "fastify": "^5.8.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4"
+  }
+}
+

@@ -1,0 +1,16 @@
+{
+  "name": "ti-training-group",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm -ws run dev",
+    "build": "npm -ws run build",
+    "typecheck": "npm -ws run typecheck",
+    "lint": "npm -ws run lint",
+    "test": "npm -ws run test"
+  }
+}
+
