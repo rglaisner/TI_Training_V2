@@ -11,15 +11,12 @@ Use the **same** project for:
 
 ## 2. Frontend env (`apps/frontend/.env.local`)
 
-Set all `NEXT_PUBLIC_FIREBASE_*` fields from Firebase Console → Project settings → Your apps → Web app config.
+1. Copy `apps/frontend/.env.example` to `.env.local` (if you have not already).
+2. In Firebase: open **Project settings** (gear icon next to “Project overview” in the left sidebar), scroll to **Your apps**, choose your **Web** app (`</>`), and copy each value from the config into the matching `NEXT_PUBLIC_FIREBASE_*` line in `.env.local`.
 
-**Turn off** local test bypass for real auth:
+Keep **`NEXT_PUBLIC_API_BASE_URL`** pointing at your backend (for example `http://localhost:4000`).
 
-- Do **not** set `NEXT_PUBLIC_USE_TEST_AUTH` (or set it to `false`).
-
-Set API URL to your backend:
-
-- `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000` (or your port)
+**Note:** You only need `NEXT_PUBLIC_USE_TEST_AUTH` for automated Playwright tests. If that line is not in your file, you are fine—do not add it for normal sign-in.
 
 ## 3. Backend env (`apps/backend/.env.local`)
 
