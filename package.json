@@ -11,6 +11,8 @@
     "typecheck": "npm -ws run typecheck",
     "lint": "npm -ws run lint",
     "test": "npm -ws run test"
+  },
+  "dependencies": {
+    "firebase": "^12.11.0"
   }
 }
-
