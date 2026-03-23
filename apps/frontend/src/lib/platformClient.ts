@@ -36,10 +36,28 @@ async function safeJson(response: Response): Promise<unknown> {
   }
 }
 
+function isBrowserTestAuthEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_USE_TEST_AUTH === 'true';
+}
+
+function appendTestAuthHeaders(headers: Record<string, string>): void {
+  if (!isBrowserTestAuthEnabled()) {
+    return;
+  }
+  const tenantId = process.env.NEXT_PUBLIC_TEST_TENANT_ID ?? 'dev-tenant';
+  const userId = process.env.NEXT_PUBLIC_TEST_USER_ID ?? 'dev-user';
+  const role =
+    process.env.NEXT_PUBLIC_TEST_ROLE === 'tenant_admin' ? 'tenant_admin' : 'tenant_user';
+  headers['x-tenant-id'] = tenantId;
+  headers['x-user-id'] = userId;
+  headers['x-role'] = role;
+}
+
 async function buildHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
   };
+  appendTestAuthHeaders(headers);
   try {
     const user = getAuth().currentUser;
     if (user) {

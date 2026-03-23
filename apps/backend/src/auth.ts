@@ -49,7 +49,7 @@ export class FirebaseAuthResolver implements AuthResolver {
     const userId = typeof decoded.uid === 'string' ? decoded.uid : '';
     const tenantId = typeof decoded.tenantId === 'string' ? decoded.tenantId : '';
     if (!userId || !tenantId) {
-      throw new Error('Token missing uid or tenantId claim');
+      throw new Error('TOKEN_MISSING_UID_OR_TENANT_CLAIM');
     }
     const role = toRole(decoded.role);
     return {

@@ -1,4 +1,20 @@
+import { config as loadEnv } from 'dotenv';
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import admin from 'firebase-admin';
+
+/** Load apps/backend/.env then apps/backend/.env.local (local wins). Node does not read these files by itself. */
+const backendRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+for (const relativeName of ['.env', '.env.local'] as const) {
+  const envPath = resolve(backendRoot, relativeName);
+  if (existsSync(envPath)) {
+    loadEnv({
+      path: envPath,
+      override: relativeName === '.env.local',
+    });
+  }
+}
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { createApp } from './app';
 import { FirebaseAuthResolver, TestAuthResolver } from './auth';

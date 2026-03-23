@@ -1,8 +1,11 @@
 'use client';
 
+import FirebaseAuthPanel from './FirebaseAuthPanel';
+import { useFirebaseAuthContext } from '../lib/FirebaseAuthContext';
 import { useMissionStore } from '../lib/missionStore';
 
 export default function HomePage() {
+  const { user, authReady, apiIdentityBypassed } = useFirebaseAuthContext();
   const {
     missionState,
     statusMessage,
@@ -20,19 +23,27 @@ export default function HomePage() {
   const isOpenInputNode = missionState?.currentNode.type === 'open_input';
   const isTerminal = missionState?.isTerminal === true;
 
+  const canCallMissionApi = apiIdentityBypassed || user !== null;
+  const startDisabled =
+    isSubmitting || !authReady || !canCallMissionApi;
+
   return (
     <main className="mx-auto max-w-5xl p-6 text-zinc-100">
       <h1 className="text-2xl font-semibold">TIC Trainer V2</h1>
+      <FirebaseAuthPanel />
       <section className="mt-4 rounded border border-zinc-700 p-4">
         <h2 className="text-lg font-medium">Scenario Selection</h2>
         <button
           data-testid="scenario-card"
-          className="mt-3 rounded bg-blue-700 px-4 py-2"
+          className="mt-3 rounded bg-blue-700 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
           onClick={() => void startMission('scenario-1')}
-          disabled={isSubmitting}
+          disabled={startDisabled}
         >
           Start Scenario 1
         </button>
+        {authReady && !canCallMissionApi ? (
+          <p className="mt-2 text-sm text-zinc-400">Sign in with Firebase to start a mission.</p>
+        ) : null}
       </section>
 
       <section data-testid="tools-region" className="mt-4 rounded border border-zinc-700 p-4">

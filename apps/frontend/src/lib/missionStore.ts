@@ -31,7 +31,8 @@ function uiMessage(error: unknown): string {
 
 export const useMissionStore = create<MissionStore>((set, get) => ({
   missionState: null,
-  statusMessage: 'Waiting for your decision…',
+  statusMessage:
+    'Click Start Scenario 1 to begin. Narrative, choices, and text input show up here after the API responds.',
   errorMessage: '',
   openInputText: '',
   isSubmitting: false,

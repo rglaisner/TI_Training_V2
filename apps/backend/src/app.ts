@@ -93,6 +93,14 @@ function parseAuthError(error: unknown, requestId: string): ApiError {
       requestId,
     };
   }
+  if (error instanceof Error && error.message === 'TOKEN_MISSING_UID_OR_TENANT_CLAIM') {
+    return {
+      code: 'FORBIDDEN',
+      message:
+        'Your account is signed in but missing tenantId (Firebase custom claim). Run set-user-claims on the backend for your user UID (see docs/firebase-real-auth-setup.md).',
+      requestId,
+    };
+  }
   return {
     code: 'FORBIDDEN',
     message: 'Unable to resolve tenant identity',
@@ -126,7 +134,17 @@ function createDecisionRejectedEvent(input: {
 
 export function createApp(deps: AppDeps) {
   const app = Fastify({ logger: true });
-  app.register(cors, { origin: true, methods: ['GET', 'POST', 'OPTIONS'] });
+  app.register(cors, {
+    origin: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: [
+      'content-type',
+      'authorization',
+      'x-tenant-id',
+      'x-user-id',
+      'x-role',
+    ],
+  });
 
   app.get('/health', async () => ({ status: 'ok' }));
 
