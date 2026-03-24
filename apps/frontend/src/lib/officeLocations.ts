@@ -26,7 +26,7 @@ export type HudMetrics = z.infer<typeof hudMetricsSchema>;
 export const officeLocationEntrySchema = z.object({
   id: locationIdSchema,
   title: z.string(),
-  /** Public URL path under `/` (e.g. `/office/plates/desk.svg`). Replace with licensed art for production. */
+  /** Public URL served from `public/office/plates/`. Controlled by `OFFICE_PLATE_FILENAMES`. */
   backgroundSrc: z.string(),
   stageVariant: stageVariantSchema,
   stageAriaLabel: z.string(),
@@ -35,11 +35,30 @@ export const officeLocationEntrySchema = z.object({
 
 export type OfficeLocationEntry = z.infer<typeof officeLocationEntrySchema>;
 
+/**
+ * Raster (or SVG) filename per room, under `apps/frontend/public/office/plates/`.
+ * Edit this map if your files use different names (e.g. `at-desk.webp`).
+ */
+export const OFFICE_PLATE_FILENAMES: Record<LocationId, string> = {
+  desk: 'desk.png',
+  hub: 'hub.png',
+  coffee: 'coffee.png',
+  boardroom: 'boardroom.png',
+  boss: 'boss.png',
+  meeting: 'meeting.png',
+  call: 'call.png',
+};
+
+export function getOfficePlateUrl(locationId: LocationId): string {
+  const filename = OFFICE_PLATE_FILENAMES[locationId];
+  return `/office/plates/${filename}`;
+}
+
 const rawOfficeLocations = [
   {
     id: 'desk' as const,
     title: 'Your desk',
-    backgroundSrc: '/office/plates/desk.svg',
+    backgroundSrc: getOfficePlateUrl('desk'),
     stageVariant: 'monitor' as const,
     stageAriaLabel: 'Workstation monitor — training dashboard',
     hudMetrics: { showLevel: true, showCurrency: true, showTrophy: true },
@@ -47,7 +66,7 @@ const rawOfficeLocations = [
   {
     id: 'hub' as const,
     title: 'Open floor',
-    backgroundSrc: '/office/plates/hub.svg',
+    backgroundSrc: getOfficePlateUrl('hub'),
     stageVariant: 'fullscreen' as const,
     stageAriaLabel: 'Office hub — choose a location',
     hudMetrics: { showLevel: true, showCurrency: true, showTrophy: true },
@@ -55,7 +74,7 @@ const rawOfficeLocations = [
   {
     id: 'coffee' as const,
     title: 'Coffee corner',
-    backgroundSrc: '/office/plates/coffee.svg',
+    backgroundSrc: getOfficePlateUrl('coffee'),
     stageVariant: 'fullscreen' as const,
     stageAriaLabel: 'Break area — team chat',
     hudMetrics: { showLevel: true, showCurrency: false, showTrophy: false },
@@ -63,7 +82,7 @@ const rawOfficeLocations = [
   {
     id: 'boardroom' as const,
     title: 'Board room',
-    backgroundSrc: '/office/plates/boardroom.svg',
+    backgroundSrc: getOfficePlateUrl('boardroom'),
     stageVariant: 'fullscreen' as const,
     stageAriaLabel: 'Board room — presentation',
     hudMetrics: { showLevel: true, showCurrency: true, showTrophy: true },
@@ -71,7 +90,7 @@ const rawOfficeLocations = [
   {
     id: 'boss' as const,
     title: "Boss's office",
-    backgroundSrc: '/office/plates/boss.svg',
+    backgroundSrc: getOfficePlateUrl('boss'),
     stageVariant: 'monitor' as const,
     stageAriaLabel: "Manager's office — one-on-one",
     hudMetrics: { showLevel: true, showCurrency: false, showTrophy: true },
@@ -79,7 +98,7 @@ const rawOfficeLocations = [
   {
     id: 'meeting' as const,
     title: 'Meeting room',
-    backgroundSrc: '/office/plates/meeting.svg',
+    backgroundSrc: getOfficePlateUrl('meeting'),
     stageVariant: 'fullscreen' as const,
     stageAriaLabel: 'Mid-size meeting — brainstorming',
     hudMetrics: { showLevel: true, showCurrency: false, showTrophy: false },
@@ -87,7 +106,7 @@ const rawOfficeLocations = [
   {
     id: 'call' as const,
     title: 'Video call',
-    backgroundSrc: '/office/plates/call.svg',
+    backgroundSrc: getOfficePlateUrl('call'),
     stageVariant: 'videoTiles' as const,
     stageAriaLabel: 'Video call with teammates',
     hudMetrics: { showLevel: false, showCurrency: false, showTrophy: false },

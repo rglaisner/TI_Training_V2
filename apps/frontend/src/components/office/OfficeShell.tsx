@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import type { OfficeLocationEntry } from '@/lib/officeLocations';
@@ -17,6 +16,11 @@ export function OfficeShell({ entry, children }: OfficeShellProps) {
   const compactUi = useOfficeChromeStore((s) => s.compactUi);
   const toggleCompactUi = useOfficeChromeStore((s) => s.toggleCompactUi);
   const [now, setNow] = useState(() => new Date());
+  const [backgroundFailed, setBackgroundFailed] = useState(false);
+
+  useEffect(() => {
+    setBackgroundFailed(false);
+  }, [entry.backgroundSrc]);
 
   const focusTasks = useCallback(() => {
     const el = document.querySelector<HTMLElement>('[data-office-focus="tasks"]');
@@ -92,14 +96,21 @@ export function OfficeShell({ entry, children }: OfficeShellProps) {
       </a>
 
       <div className="pointer-events-none fixed inset-0 z-0">
-        <Image
-          src={entry.backgroundSrc}
-          alt=""
-          fill
-          priority
-          className="object-cover object-center motion-safe:transition-[transform,filter] motion-reduce:transition-none"
-          sizes="100vw"
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-slate-950 via-zinc-900 to-neutral-950"
+          aria-hidden
         />
+        {!backgroundFailed ? (
+          // Plain <img>: user plates live in /public and may be missing locally; next/image treats 404 HTML as a hard error in dev.
+          <img
+            src={entry.backgroundSrc}
+            alt=""
+            decoding="async"
+            fetchPriority="high"
+            className="absolute inset-0 h-full w-full object-cover object-center motion-safe:transition-[transform,filter] motion-reduce:transition-none"
+            onError={() => setBackgroundFailed(true)}
+          />
+        ) : null}
         <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/50" aria-hidden />
       </div>
 
