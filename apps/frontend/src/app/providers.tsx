@@ -1,6 +1,5 @@
 'use client';
 
-import '@/lib/firebaseClient';
 import type { ReactNode } from 'react';
 import { FirebaseAuthProvider } from '../lib/FirebaseAuthContext';
 

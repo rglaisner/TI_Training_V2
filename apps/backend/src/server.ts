@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import admin from 'firebase-admin';
+import { z } from 'zod';
 
 /** Load apps/backend/.env then apps/backend/.env.local (local wins). Node does not read these files by itself. */
 const backendRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -27,12 +28,55 @@ import {
 import { FirestorePersistence } from './firestorePersistence';
 import { InMemoryPersistence } from './persistence';
 
+/** Service account fields required for `admin.credential.cert` (full JSON may include more keys). */
+const FirebaseServiceAccountJsonSchema = z
+  .object({
+    project_id: z.string(),
+    private_key: z.string(),
+    client_email: z.string(),
+  })
+  .passthrough();
+
 const useTestAuth = process.env.USE_TEST_AUTH === 'true';
 const useInMemoryPersistence = process.env.USE_IN_MEMORY_PERSISTENCE === 'true';
 
-if (!useInMemoryPersistence && admin.apps.length === 0) {
+function initializeFirebaseAdminApp(): void {
+  if (useInMemoryPersistence || admin.apps.length > 0) {
+    return;
+  }
+
+  const rawJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+  if (rawJson) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawJson) as unknown;
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error({ event: 'FIREBASE_SERVICE_ACCOUNT_JSON_PARSE_FAILED', errMsg });
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON');
+    }
+
+    const accountResult = FirebaseServiceAccountJsonSchema.safeParse(parsed);
+    if (!accountResult.success) {
+      console.error({
+        event: 'FIREBASE_SERVICE_ACCOUNT_JSON_VALIDATION_FAILED',
+        issues: accountResult.error.issues,
+      });
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON failed validation');
+    }
+
+    const { project_id: projectId, private_key: privateKey, client_email: clientEmail } =
+      accountResult.data;
+    admin.initializeApp({
+      credential: admin.credential.cert({ projectId, privateKey, clientEmail }),
+    });
+    return;
+  }
+
   admin.initializeApp();
 }
+
+initializeFirebaseAdminApp();
 
 const authResolver = useTestAuth
   ? new TestAuthResolver()

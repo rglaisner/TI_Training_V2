@@ -2,7 +2,7 @@
 
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { auth } from './firebaseClient';
+import { getFirebaseAuth } from './firebaseClient';
 import { useMissionStore } from './missionStore';
 
 function isTestAuthBypass(): boolean {
@@ -27,6 +27,7 @@ export function useFirebaseAuth(): UseFirebaseAuthResult {
   const previousUid = useRef<string | null>(null);
 
   useEffect(() => {
+    const auth = getFirebaseAuth();
     return onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
       setAuthReady(true);
@@ -44,11 +45,11 @@ export function useFirebaseAuth(): UseFirebaseAuthResult {
   }, []);
 
   const signInWithEmailPassword = useCallback(async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email.trim(), password);
+    await signInWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
   }, []);
 
   const signOutUser = useCallback(async () => {
-    await signOut(auth);
+    await signOut(getFirebaseAuth());
   }, []);
 
   return useMemo(

@@ -1,0 +1,19 @@
+# Render Blueprint: Web Service for the Fastify API (monorepo root).
+# After connecting this repo in Render, set secrets in the dashboard:
+#   - FIREBASE_SERVICE_ACCOUNT_JSON = full Firebase service account JSON (recommended), OR
+#   - GOOGLE_APPLICATION_CREDENTIALS = path if you use a Render secret file mount
+# Optional: GEMINI_API_KEY, GEMINI_MODEL (see docs/gemini-and-missions.md)
+services:
+  - type: web
+    name: ti-training-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build --workspace=@ti-training/backend
+    startCommand: node apps/backend/dist/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20.18.0"
+      - key: HOST
+        value: "0.0.0.0"

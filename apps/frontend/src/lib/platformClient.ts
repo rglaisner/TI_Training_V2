@@ -13,7 +13,7 @@ import {
   MentorResponseSchema,
   StartMissionResponseSchema,
 } from '@ti-training/shared';
-import { getAuth } from 'firebase/auth';
+import { getFirebaseAuth } from './firebaseClient';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 
@@ -59,7 +59,7 @@ async function buildHeaders(): Promise<Record<string, string>> {
   };
   appendTestAuthHeaders(headers);
   try {
-    const user = getAuth().currentUser;
+    const user = getFirebaseAuth().currentUser;
     if (user) {
       const token = await user.getIdToken();
       headers.authorization = `Bearer ${token}`;
