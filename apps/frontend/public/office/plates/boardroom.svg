@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-label="Board room placeholder">
-  <rect width="1920" height="1080" fill="#2c3a4a"/>
-  <rect x="120" y="140" width="1680" height="800" rx="24" fill="#1a2430" opacity="0.6"/>
-  <rect x="200" y="220" width="1520" height="40" rx="4" fill="#c9a227" opacity="0.35"/>
-  <rect x="200" y="720" width="1520" height="180" rx="8" fill="#0d1218" opacity="0.5"/>
-</svg>
