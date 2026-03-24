@@ -1,8 +1,9 @@
 /**
- * On Vercel, NEXT_PUBLIC_* must be present at build time (inlined into the client bundle).
- * Failing here avoids shipping a production bundle that throws only at runtime in the browser.
+ * On Vercel, NEXT_PUBLIC_* are inlined at build time. We only **warn** here so a missing dashboard
+ * config does not block deploy; the client still shows `FirebaseAuthPanel` instructions when Firebase
+ * vars are absent. For a working production app, set all listed keys and redeploy.
  */
-function assertVercelPublicEnv() {
+function warnVercelPublicEnv() {
   if (process.env.VERCEL !== '1') {
     return;
   }
@@ -17,15 +18,14 @@ function assertVercelPublicEnv() {
   ];
   const missing = required.filter((key) => !String(process.env[key] ?? '').trim());
   if (missing.length > 0) {
-    throw new Error(
-      `[Vercel] Missing or empty environment variables: ${missing.join(
-        ', ',
-      )}. Add them in the Vercel project → Settings → Environment Variables, then trigger a new deployment. See docs/deployment.md.`,
+    console.warn(
+      `[ti-training] Vercel build: missing or empty env: ${missing.join(', ')}. ` +
+        'Build continues; add these under Project → Settings → Environment Variables and redeploy for live Firebase + API. See docs/deployment.md.',
     );
   }
 }
 
-assertVercelPublicEnv();
+warnVercelPublicEnv();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
