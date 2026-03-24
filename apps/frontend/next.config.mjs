@@ -2,6 +2,9 @@
  * On Vercel, NEXT_PUBLIC_* are inlined at build time. We only **warn** here so a missing dashboard
  * config does not block deploy; the client still shows `FirebaseAuthPanel` instructions when Firebase
  * vars are absent. For a working production app, set all listed keys and redeploy.
+ *
+ * Note: Redeploying an old failed Vercel deployment reuses that deployment’s Git SHA. After changing
+ * this file, deploy from the latest `main` (new commit or “Deploy” from branch), not “Redeploy” on a stale build.
  */
 function warnVercelPublicEnv() {
   if (process.env.VERCEL !== '1') {
