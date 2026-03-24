@@ -468,6 +468,15 @@ export const MissionEventSchema = z.union([
 
 export type MissionEvent = z.infer<typeof MissionEventSchema>;
 
+/** Response shape for `GET /api/missions/tracker/summary` (user-facing tracker). */
+export const TrackerSummaryResponseSchema = z.object({
+  levelBand: z.number().int(),
+  profileMetrics: ProfileMetricsSchema,
+  recentEvidence: z.array(MissionEventSchema),
+});
+
+export type TrackerSummaryResponse = z.infer<typeof TrackerSummaryResponseSchema>;
+
 export function normalizeScoreTo100(rawScore: number): {
   awardedScore: number;
   rawScale: 'zero_to_one' | 'zero_to_one_hundred';

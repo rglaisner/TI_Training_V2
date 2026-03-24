@@ -11,12 +11,8 @@ const FirebaseWebConfigSchema = z.object({
 
 export type FirebaseWebConfig = z.infer<typeof FirebaseWebConfigSchema>;
 
-/**
- * Reads and validates Firebase Web SDK config from NEXT_PUBLIC_* env (browser bundle).
- * On failure: logs Zod issues and throws so the UI does not silently misconfigure Auth.
- */
-export function getFirebaseWebConfig(): FirebaseWebConfig {
-  const raw = {
+function readRawFirebaseWebConfigFromEnv(): Record<keyof FirebaseWebConfig, string | undefined> {
+  return {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -24,6 +20,19 @@ export function getFirebaseWebConfig(): FirebaseWebConfig {
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   };
+}
+
+/** True when all `NEXT_PUBLIC_FIREBASE_*` values are present and pass schema checks. */
+export function isFirebaseWebConfigReady(): boolean {
+  return FirebaseWebConfigSchema.safeParse(readRawFirebaseWebConfigFromEnv()).success;
+}
+
+/**
+ * Reads and validates Firebase Web SDK config from NEXT_PUBLIC_* env (browser bundle).
+ * On failure: logs Zod issues and throws so the UI does not silently misconfigure Auth.
+ */
+export function getFirebaseWebConfig(): FirebaseWebConfig {
+  const raw = readRawFirebaseWebConfigFromEnv();
   const parsed = FirebaseWebConfigSchema.safeParse(raw);
   if (!parsed.success) {
     console.error({
@@ -31,7 +40,7 @@ export function getFirebaseWebConfig(): FirebaseWebConfig {
       issues: parsed.error.issues,
     });
     throw new Error(
-      'Firebase web config failed validation. Set all NEXT_PUBLIC_FIREBASE_* values in apps/frontend/.env.local.',
+      'Firebase web config failed validation. For local dev, set all NEXT_PUBLIC_FIREBASE_* in apps/frontend/.env.local. For Vercel, add the same variables under Project → Settings → Environment Variables (Production + Preview), then redeploy — NEXT_PUBLIC_* values are baked in at build time.',
     );
   }
   return parsed.data;

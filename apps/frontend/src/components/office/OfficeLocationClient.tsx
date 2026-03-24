@@ -79,6 +79,35 @@ function HubNav() {
           </li>
         ))}
       </ul>
+      <div className="mt-10 border-t border-zinc-800 pt-6">
+        <h2 className="text-sm font-medium uppercase tracking-wider text-zinc-500">Program pages</h2>
+        <ul className="mt-3 flex flex-wrap gap-2" data-testid="office-hub-program-links">
+          <li>
+            <Link
+              href="/tracker"
+              className="inline-flex rounded-lg border border-emerald-800/60 bg-emerald-950/40 px-4 py-2 text-sm font-medium text-emerald-100 hover:border-emerald-600/70"
+            >
+              Personal tracker
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/experience"
+              className="inline-flex rounded-lg border border-violet-800/50 bg-violet-950/30 px-4 py-2 text-sm font-medium text-violet-100 hover:border-violet-600/60"
+            >
+              Experience lab (microcopy · ambience · UI variation)
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/learn/tokens"
+              className="inline-flex rounded-lg border border-cyan-800/50 bg-cyan-950/25 px-4 py-2 text-sm font-medium text-cyan-100 hover:border-cyan-600/60"
+            >
+              Design tokens walkthrough
+            </Link>
+          </li>
+        </ul>
+      </div>
     </div>
   );
 }

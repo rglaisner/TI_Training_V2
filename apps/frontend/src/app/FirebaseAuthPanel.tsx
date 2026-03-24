@@ -25,8 +25,14 @@ function signInErrorMessage(error: unknown): string {
 }
 
 export default function FirebaseAuthPanel() {
-  const { user, authReady, apiIdentityBypassed, signInWithEmailPassword, signOutUser } =
-    useFirebaseAuthContext();
+  const {
+    user,
+    authReady,
+    firebaseConfigInvalid,
+    apiIdentityBypassed,
+    signInWithEmailPassword,
+    signOutUser,
+  } = useFirebaseAuthContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState('');
@@ -40,6 +46,39 @@ export default function FirebaseAuthPanel() {
         tabIndex={-1}
       >
         <p className="text-zinc-400">Checking sign-in…</p>
+      </section>
+    );
+  }
+
+  if (firebaseConfigInvalid) {
+    return (
+      <section
+        className="mt-4 rounded border border-red-900/60 bg-red-950/40 p-4 outline-none focus-visible:ring-2 focus-visible:ring-red-400/60"
+        data-testid="auth-region"
+        data-office-focus="phone"
+        tabIndex={-1}
+      >
+        <h2 className="text-lg font-medium text-red-100">Firebase is not configured for this build</h2>
+        <p className="mt-2 text-sm leading-relaxed text-red-200/90">
+          The browser bundle is missing valid <code className="rounded bg-red-950/80 px-1">NEXT_PUBLIC_FIREBASE_*</code>{' '}
+          values. They must be set <strong>before</strong> the Next.js build runs (Vercel bakes them into the client).
+        </p>
+        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-red-100/95">
+          <li>
+            Vercel → your project → <strong>Settings → Environment Variables</strong>: add every key from{' '}
+            <code className="rounded bg-red-950/80 px-1">apps/frontend/.env.example</code> (Production and Preview if you
+            use previews).
+          </li>
+          <li>
+            Set <code className="rounded bg-red-950/80 px-1">NEXT_PUBLIC_API_BASE_URL</code> to your API origin (e.g.{' '}
+            <code className="rounded bg-red-950/80 px-1">https://ti-training-api.onrender.com</code>).
+          </li>
+          <li>Redeploy the frontend. Add your Vercel hostname under Firebase → Authentication → Authorized domains.</li>
+        </ol>
+        <p className="mt-3 text-xs text-red-300/80">
+          Local fix: copy values into <code className="rounded bg-red-950/80 px-1">apps/frontend/.env.local</code>. See{' '}
+          <code className="rounded bg-red-950/80 px-1">docs/deployment.md</code>.
+        </p>
       </section>
     );
   }

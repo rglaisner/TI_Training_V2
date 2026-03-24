@@ -13,6 +13,7 @@ Use the **Render MCP** (`user-render`) for logs, deploy status, and service deta
 
 ## Frontend (Vercel)
 
+- **Build guard:** If `VERCEL=1` during `next build`, the frontend **fails the build** when any required `NEXT_PUBLIC_*` variable is missing or empty. This prevents shipping a client bundle that only errors at runtime (`Firebase web config failed validation`). Fix: add the variables below, then redeploy.
 - **Environment variables** (Production + Preview if needed):
   - `NEXT_PUBLIC_API_BASE_URL` = `https://ti-training-api.onrender.com` (origin only, no path).
   - All `NEXT_PUBLIC_FIREBASE_*` (see [`apps/frontend/.env.example`](../apps/frontend/.env.example)).

@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import FirebaseAuthPanel from '@/app/FirebaseAuthPanel';
 import { useFirebaseAuthContext } from '@/lib/FirebaseAuthContext';
 import { useMissionStore } from '@/lib/missionStore';
 
 export default function MissionDashboard() {
-  const { user, authReady, apiIdentityBypassed } = useFirebaseAuthContext();
+  const { user, authReady, firebaseConfigInvalid, apiIdentityBypassed } = useFirebaseAuthContext();
   const {
     missionState,
     statusMessage,
@@ -30,7 +31,8 @@ export default function MissionDashboard() {
   const branchingOptions = missionState?.currentNode.branchingOptions ?? [];
 
   const canCallMissionApi = apiIdentityBypassed || user !== null;
-  const startDisabled = isSubmitting || !authReady || !canCallMissionApi;
+  const startDisabled =
+    isSubmitting || !authReady || !canCallMissionApi || firebaseConfigInvalid;
 
   return (
     <div className="bg-zinc-950 p-4 text-zinc-100 sm:p-5">
@@ -38,6 +40,19 @@ export default function MissionDashboard() {
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">TIC Trainer V2</h1>
         <p className="mt-1 text-sm text-zinc-400">
           Mini-world scenario: three real stances, two open-text beats, one surprise pressure — then dossier.
+        </p>
+        <p className="mt-3 text-xs text-zinc-500">
+          <Link href="/office/hub" className="text-emerald-500 hover:text-emerald-400">
+            Office hub
+          </Link>
+          {' · '}
+          <Link href="/tracker" className="text-emerald-500 hover:text-emerald-400">
+            Tracker
+          </Link>
+          {' · '}
+          <Link href="/experience" className="text-emerald-500 hover:text-emerald-400">
+            Experience lab
+          </Link>
         </p>
       </header>
       <FirebaseAuthPanel />

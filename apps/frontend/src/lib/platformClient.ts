@@ -6,12 +6,14 @@ import type {
   MentorResponse,
   MissionState,
   StartMissionRequest,
+  TrackerSummaryResponse,
 } from '@ti-training/shared';
 import {
   ApiErrorSchema,
   DecisionResponseSchema,
   MentorResponseSchema,
   StartMissionResponseSchema,
+  TrackerSummaryResponseSchema,
 } from '@ti-training/shared';
 import { getFirebaseAuth } from './firebaseClient';
 
@@ -121,6 +123,28 @@ export const PlatformClient = {
     }
 
     return MentorResponseSchema.parse(await safeJson(response));
+  },
+
+  async getTrackerSummary(): Promise<TrackerSummaryResponse> {
+    const response = await fetch(`${apiBaseUrl}/api/missions/tracker/summary`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+    });
+
+    if (!response.ok) {
+      return parseError(response, 'Tracker summary failed');
+    }
+
+    const raw = await safeJson(response);
+    const parsed = TrackerSummaryResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error({
+        event: 'TRACKER_SUMMARY_VALIDATION_FAILED',
+        issues: parsed.error.issues,
+      });
+      throw new PlatformClientError('Tracker summary response failed validation.');
+    }
+    return parsed.data;
   },
 };
 
