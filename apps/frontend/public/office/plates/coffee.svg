@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-label="Coffee area placeholder">
+  <defs>
+    <linearGradient id="c" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8ddd4"/>
+      <stop offset="100%" style="stop-color:#8b7355"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#c)"/>
+  <rect x="720" y="320" width="480" height="520" rx="16" fill="#3d2f28" opacity="0.35"/>
+  <ellipse cx="960" cy="780" rx="280" ry="40" fill="#2a2018" opacity="0.4"/>
+</svg>

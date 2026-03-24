@@ -33,7 +33,12 @@ export default function FirebaseAuthPanel() {
 
   if (!authReady) {
     return (
-      <section className="mt-4 rounded border border-zinc-700 p-4" data-testid="auth-region">
+      <section
+        className="mt-4 rounded border border-zinc-700 p-4 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
+        data-testid="auth-region"
+        data-office-focus="phone"
+        tabIndex={-1}
+      >
         <p className="text-zinc-400">Checking sign-in…</p>
       </section>
     );
@@ -41,7 +46,12 @@ export default function FirebaseAuthPanel() {
 
   if (apiIdentityBypassed) {
     return (
-      <section className="mt-4 rounded border border-amber-800/60 bg-amber-950/30 p-4" data-testid="auth-region">
+      <section
+        className="mt-4 rounded border border-amber-800/60 bg-amber-950/30 p-4 outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+        data-testid="auth-region"
+        data-office-focus="phone"
+        tabIndex={-1}
+      >
         <h2 className="text-lg font-medium text-amber-100">Auth (test bypass)</h2>
         <p className="mt-2 text-sm text-amber-200/90">
           NEXT_PUBLIC_USE_TEST_AUTH is on — the API uses test headers, not Firebase. Turn it off for real
@@ -53,7 +63,12 @@ export default function FirebaseAuthPanel() {
 
   if (user) {
     return (
-      <section className="mt-4 rounded border border-zinc-700 p-4" data-testid="auth-region">
+      <section
+        className="mt-4 rounded border border-zinc-700 p-4 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
+        data-testid="auth-region"
+        data-office-focus="phone"
+        tabIndex={-1}
+      >
         <h2 className="text-lg font-medium">Signed in</h2>
         <p className="mt-2 text-sm text-zinc-400" data-testid="auth-user-label">
           {user.email ?? user.uid}
@@ -77,7 +92,12 @@ export default function FirebaseAuthPanel() {
   }
 
   return (
-    <section className="mt-4 rounded border border-zinc-700 p-4" data-testid="auth-region">
+    <section
+      className="mt-4 rounded border border-zinc-700 p-4 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
+      data-testid="auth-region"
+      data-office-focus="phone"
+      tabIndex={-1}
+    >
       <h2 className="text-lg font-medium">Sign in (Firebase)</h2>
       <p className="mt-2 text-sm text-zinc-400">
         The API requires a real Firebase ID token. Use the same project as the backend service account.
