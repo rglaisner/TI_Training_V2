@@ -1,11 +1,44 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import type { LocationId } from '@/lib/officeLocations';
+import type { LocationId, OfficeLocationEntry } from '@/lib/officeLocations';
 import { getOfficeLocationOrThrow, OFFICE_LOCATION_MANIFEST } from '@/lib/officeLocations';
 import MissionDashboard from '@/components/mission/MissionDashboard';
 import ChatStagePlaceholder from '@/components/office/ChatStagePlaceholder';
 import { OfficeShell } from '@/components/office/OfficeShell';
+
+const DESK_MISSION_IDS: readonly LocationId[] = ['desk', 'desk2', 'desk3'];
+
+const CHAT_PLACEHOLDER_IDS: readonly LocationId[] = [
+  'coffee',
+  'lounge',
+  'text_exchange',
+  'meeting',
+  'meeting2',
+];
+
+const PRESENTATION_INTRO_IDS: readonly LocationId[] = [
+  'boardroom',
+  'hr_expo',
+  'hr_expo_2',
+  'keynote_midsize',
+  'keynote_midsize_2',
+  'keynote_midsize_3',
+  'keynote_master',
+  'keynote_master_2',
+  'keynote_master_3',
+];
+
+const MENTOR_INTRO_IDS: readonly LocationId[] = ['mentor_diner', 'mentor_outdoor', 'mentor_outdoor_2'];
+
+const EXEC_1ON1_IDS: readonly LocationId[] = ['boss', 'boss2'];
+
+const VIDEO_CALL_IDS: readonly LocationId[] = ['call', 'call2'];
+
+function includesId(list: readonly LocationId[], id: LocationId): boolean {
+  return list.includes(id);
+}
 
 function SimpleRoomIntro({
   title,
@@ -33,8 +66,8 @@ function HubNav() {
   return (
     <div className="bg-zinc-950 p-6 text-zinc-100">
       <h1 className="text-xl font-semibold">Office hub</h1>
-      <p className="mt-2 text-sm text-zinc-400">Pick a location. Mission training runs at your desk.</p>
-      <ul className="mt-6 grid gap-2 sm:grid-cols-2" data-testid="office-hub-nav">
+      <p className="mt-2 text-sm text-zinc-400">Pick a location. Mission training runs at your desk views.</p>
+      <ul className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="office-hub-nav">
         {OFFICE_LOCATION_MANIFEST.map((loc) => (
           <li key={loc.id}>
             <Link
@@ -50,42 +83,71 @@ function HubNav() {
   );
 }
 
+function VideoCallStageIntro({ title }: { title: string }) {
+  return (
+    <div className="bg-zinc-950 p-6 text-zinc-100">
+      <h1 className="text-lg font-semibold">{title}</h1>
+      <p className="mt-2 text-sm text-zinc-400">
+        Main content sits in the center column; side tiles are for remote participants. Connect WebRTC when ready.
+      </p>
+    </div>
+  );
+}
+
+function renderOfficeLocationContent(locationId: LocationId, entry: OfficeLocationEntry): ReactNode {
+  if (locationId === 'hub') {
+    return <HubNav />;
+  }
+
+  if (includesId(DESK_MISSION_IDS, locationId)) {
+    return <MissionDashboard />;
+  }
+
+  if (includesId(CHAT_PLACEHOLDER_IDS, locationId)) {
+    return (
+      <ChatStagePlaceholder
+        title={entry.title}
+        subtitle="Transcript and composer will connect to realtime chat or voice when you wire a provider."
+      />
+    );
+  }
+
+  if (includesId(PRESENTATION_INTRO_IDS, locationId)) {
+    return (
+      <SimpleRoomIntro
+        title={entry.title}
+        description="Presentation slides, speaker notes, and timers can mount in this stage. Run scored training from your desk when you need evaluation."
+      />
+    );
+  }
+
+  if (includesId(MENTOR_INTRO_IDS, locationId)) {
+    return (
+      <SimpleRoomIntro
+        title={entry.title}
+        description="Coaching and mentor dialogue flows can live here. Use the desk for structured missions and evaluations."
+      />
+    );
+  }
+
+  if (includesId(EXEC_1ON1_IDS, locationId)) {
+    return (
+      <SimpleRoomIntro
+        title={entry.title}
+        description="Closed-door leadership and performance conversations. Run scored scenarios from your desk when you need structured evaluation."
+      />
+    );
+  }
+
+  if (includesId(VIDEO_CALL_IDS, locationId)) {
+    return <VideoCallStageIntro title={entry.title} />;
+  }
+
+  throw new Error(`Unhandled office location: ${String(locationId)}`);
+}
+
 export function OfficeLocationClient({ locationId }: { locationId: LocationId }) {
   const entry = getOfficeLocationOrThrow(locationId);
-
-  const inner =
-    locationId === 'desk' ? (
-      <MissionDashboard />
-    ) : locationId === 'hub' ? (
-      <HubNav />
-    ) : locationId === 'coffee' ? (
-      <ChatStagePlaceholder
-        title="Coffee corner"
-        subtitle="Casual chat with coworkers — connect voice or text here later."
-      />
-    ) : locationId === 'meeting' ? (
-      <ChatStagePlaceholder
-        title="Brainstorming session"
-        subtitle="Whiteboard and side chat — realtime integration pending."
-      />
-    ) : locationId === 'boardroom' ? (
-      <SimpleRoomIntro
-        title="Board room"
-        description="Presentation and readout mode. Slides and timer can mount in this stage when you add them."
-      />
-    ) : locationId === 'boss' ? (
-      <SimpleRoomIntro
-        title="One-on-one"
-        description="Closed-door debriefs and coaching. Run scored scenarios from your desk for now."
-      />
-    ) : (
-      <div className="bg-zinc-950 p-6 text-zinc-100">
-        <h1 className="text-lg font-semibold">Call agenda</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Main tile is the center column; side tiles are for remote participants. Hook up WebRTC when ready.
-        </p>
-      </div>
-    );
-
+  const inner = renderOfficeLocationContent(locationId, entry);
   return <OfficeShell entry={entry}>{inner}</OfficeShell>;
 }
