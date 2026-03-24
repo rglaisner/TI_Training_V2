@@ -10,8 +10,8 @@ services:
     plan: free
     region: oregon
     buildCommand: npm ci && npm run build --workspace=@ti-training/backend
-    # Plain `node` on compiled ESM hits ERR_MODULE_NOT_FOUND for extensionless ./ imports; tsx runs TypeScript source with correct resolution.
-    startCommand: npx tsx apps/backend/src/server.ts
+    # `tsc` output is overwritten by esbuild with a single ESM bundle (see backend package.json build) so `node` resolves correctly on Render.
+    startCommand: node apps/backend/dist/server.js
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
