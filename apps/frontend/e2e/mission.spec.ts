@@ -19,12 +19,13 @@ const missionDecisionUrl = /\/api\/missions\/decision(\?|#|$)/;
 const missionMentorUrl = /\/api\/missions\/mentor(\?|#|$)/;
 
 const openInputNode2 = {
-  nodeId: 'node-2',
+  nodeId: 'node-open-legal',
   type: 'open_input',
-  sceneText: 'CHRO follow-up: what do you say out loud?',
+  sceneText: 'Legal replies: tighten your note before the CHRO readout.',
+  nextNodeId: 'terminal-1',
   openInputConfig: {
     targetCompetencies: ['ti_data_integrity'],
-    evaluationPrompt: 'Evaluate',
+    evaluationPrompt: 'Evaluate using strict JSON contract.',
   },
 };
 
@@ -36,8 +37,21 @@ const startResponse = {
       type: 'branching',
       sceneText: 'Northbridge Labs hiring freeze — choose your first move.',
       branchingOptions: [
-        { choiceKey: 'option_a', label: 'Brief the CHRO tonight with ranges only' },
-        { choiceKey: 'option_b', label: 'Wait for Legal before any numbers' },
+        {
+          choiceKey: 'route_legal_first',
+          label: 'Route through Legal first',
+          nextNodeId: 'node-open-legal',
+        },
+        {
+          choiceKey: 'route_pragmatic_ship',
+          label: 'Ship ranges tonight; align Legal tomorrow',
+          nextNodeId: 'node-open-legal',
+        },
+        {
+          choiceKey: 'route_huddle',
+          label: 'Force a leadership huddle now',
+          nextNodeId: 'node-open-legal',
+        },
       ],
     },
     profileMetrics: {
@@ -67,6 +81,7 @@ const startResponse = {
       activeCosmetics: [],
     },
     isTerminal: false,
+    runMetadata: { sessionSeed: 42, variantLabel: 'Northbridge • contractor signal +14%' },
   },
 };
 
@@ -102,8 +117,10 @@ test('branching choice then open-input advances the scene', async ({ page }) => 
   });
   await page.goto('/');
   await page.getByTestId('scenario-card').click();
-  await page.getByTestId('choice-option_a').click();
-  await expect(page.getByTestId('scene-text')).toHaveText('CHRO follow-up: what do you say out loud?');
+  await page.getByTestId('choice-route_legal_first').click();
+  await expect(page.getByTestId('scene-text')).toHaveText(
+    'Legal replies: tighten your note before the CHRO readout.',
+  );
   await expect(page.getByTestId('error-banner')).toHaveCount(0);
 });
 
@@ -137,11 +154,13 @@ test('invalid evaluation contract shows retry-safe error and no advance on open 
   });
   await page.goto('/');
   await page.getByTestId('scenario-card').click();
-  await page.getByTestId('choice-option_a').click();
+  await page.getByTestId('choice-route_legal_first').click();
   await page.getByTestId('open-input').fill('My answer');
   await page.getByTestId('submit-button').click();
   await expect(page.getByTestId('error-banner')).toBeVisible();
-  await expect(page.getByTestId('scene-text')).toHaveText('CHRO follow-up: what do you say out loud?');
+  await expect(page.getByTestId('scene-text')).toHaveText(
+    'Legal replies: tighten your note before the CHRO readout.',
+  );
 });
 
 test('mentor invocation does not advance node', async ({ page }) => {
@@ -198,7 +217,7 @@ test('terminal mission renders dossier section', async ({ page }) => {
   });
   await page.goto('/');
   await page.getByTestId('scenario-card').click();
-  await page.getByTestId('choice-option_a').click();
+  await page.getByTestId('choice-route_legal_first').click();
   await page.getByTestId('open-input').fill('terminal answer');
   await page.getByTestId('submit-button').click();
   await expect(page.getByTestId('terminal-dossier')).toBeVisible();
@@ -220,7 +239,7 @@ test('after branching, open-input step shows textarea not branching buttons', as
   });
   await page.goto('/');
   await page.getByTestId('scenario-card').click();
-  await page.getByTestId('choice-option_a').click();
+  await page.getByTestId('choice-route_legal_first').click();
   await expect(page.getByTestId('open-input')).toBeVisible();
-  await expect(page.getByTestId('choice-option_a')).toHaveCount(0);
+  await expect(page.getByTestId('choice-route_legal_first')).toHaveCount(0);
 });

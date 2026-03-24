@@ -1,6 +1,7 @@
 import type {
   CompetencyDetail,
   ProfileMetrics,
+  ProfileTrend,
   TICategory,
   TICompetency,
 } from '@ti-training/shared';
@@ -41,4 +42,42 @@ export function createDefaultProfileMetrics(): ProfileMetrics {
     categoryXP,
     activeCosmetics: [],
   };
+}
+
+/**
+ * Blends each target competency's rolling score with this turn's awarded score (0–100).
+ * Does not mutate `profile`.
+ */
+export function mergeProfileAfterOpenInputEvaluation(params: {
+  profile: ProfileMetrics;
+  targetCompetencies: TICompetency[];
+  awardedScore: number;
+  demonstrated: boolean;
+  evaluatedAtIso: string;
+}): ProfileMetrics {
+  const competencies = { ...params.profile.competencies };
+  const uniqueTargets = [...new Set(params.targetCompetencies)];
+  for (const key of uniqueTargets) {
+    const prev = competencies[key];
+    const nextEvaluations = prev.evaluations + 1;
+    const blended = Math.round(
+      (prev.score * prev.evaluations + params.awardedScore) / nextEvaluations,
+    );
+    const score = Math.min(100, Math.max(0, blended));
+    let trend: ProfileTrend = 'flat';
+    if (score > prev.score) {
+      trend = 'up';
+    } else if (score < prev.score) {
+      trend = 'down';
+    }
+    competencies[key] = {
+      score,
+      evaluations: nextEvaluations,
+      lastDemonstrated: params.demonstrated
+        ? params.evaluatedAtIso
+        : prev.lastDemonstrated,
+      trend,
+    };
+  }
+  return { ...params.profile, competencies };
 }

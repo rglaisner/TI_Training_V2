@@ -12,6 +12,8 @@ export const SessionRecordSchema = z.object({
   isTerminal: z.boolean(),
   turnId: z.number().int().nonnegative(),
   profileMetrics: ProfileMetricsSchema,
+  /** Stable per session — drives placeholder + surprise-beat selection. */
+  sessionSeed: z.number().int().optional(),
 });
 
 export type SessionRecordValidated = z.infer<typeof SessionRecordSchema>;

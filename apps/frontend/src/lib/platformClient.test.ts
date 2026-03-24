@@ -41,8 +41,9 @@ describe('PlatformClient', () => {
                 type: 'branching',
                 sceneText: 'Scene',
                 branchingOptions: [
-                  { choiceKey: 'option_a', label: 'A' },
-                  { choiceKey: 'option_b', label: 'B' },
+                  { choiceKey: 'option_a', label: 'A', nextNodeId: 'node-2' },
+                  { choiceKey: 'option_b', label: 'B', nextNodeId: 'node-2' },
+                  { choiceKey: 'option_c', label: 'C', nextNodeId: 'node-2' },
                 ],
               },
               profileMetrics: {
@@ -114,8 +115,9 @@ describe('PlatformClient', () => {
               type: 'branching',
               sceneText: 'Scene',
               branchingOptions: [
-                { choiceKey: 'option_a', label: 'A' },
-                { choiceKey: 'option_b', label: 'B' },
+                { choiceKey: 'option_a', label: 'A', nextNodeId: 'node-2' },
+                { choiceKey: 'option_b', label: 'B', nextNodeId: 'node-2' },
+                { choiceKey: 'option_c', label: 'C', nextNodeId: 'node-2' },
               ],
             },
             profileMetrics: {

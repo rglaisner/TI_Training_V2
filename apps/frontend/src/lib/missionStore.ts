@@ -1,23 +1,28 @@
 'use client';
 
 import { create } from 'zustand';
-import type { DecisionRequest, MissionState } from '@ti-training/shared';
+import type { DecisionRequest, DecisionResponse, MissionState } from '@ti-training/shared';
 import { PlatformClient, PlatformClientError } from './platformClient';
 
 const initialStatusMessage =
-  'Click Start Scenario 1 to begin. You will get branching choices or a text box depending on the step — the server sends each scene.';
+  'Start the scenario to enter a 3-way stance choice, then two open-text beats (including one surprise pressure line). Mentor is optional.';
 
 interface MissionStore {
   missionState: MissionState | null;
   statusMessage: string;
   errorMessage: string;
   openInputText: string;
+  mentorUserMessage: string;
+  lastEvaluationSummary: string;
+  /** Brief in-world reaction from the last decision response (branch or open input). */
+  lastNpcMessage: string;
   isSubmitting: boolean;
   socialQueue: string[];
   /** Clears mission UI when Firebase user changes so sessionId/nodeId cannot drift from the server. */
   resetMission: () => void;
   startMission: (scenarioId: string) => Promise<void>;
   setOpenInputText: (value: string) => void;
+  setMentorUserMessage: (value: string) => void;
   submitOpenInput: () => Promise<void>;
   submitBranchingChoice: (choiceKey: string) => Promise<void>;
   invokeMentor: () => Promise<void>;
@@ -39,6 +44,9 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   statusMessage: initialStatusMessage,
   errorMessage: '',
   openInputText: '',
+  mentorUserMessage: '',
+  lastEvaluationSummary: '',
+  lastNpcMessage: '',
   isSubmitting: false,
   socialQueue: [],
   resetMission: () =>
@@ -47,6 +55,9 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       statusMessage: initialStatusMessage,
       errorMessage: '',
       openInputText: '',
+      mentorUserMessage: '',
+      lastEvaluationSummary: '',
+      lastNpcMessage: '',
       isSubmitting: false,
       socialQueue: [],
     }),
@@ -55,6 +66,8 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       isSubmitting: true,
       statusMessage: 'Evaluation running…',
       errorMessage: '',
+      lastEvaluationSummary: '',
+      lastNpcMessage: '',
     });
     try {
       const missionState = await PlatformClient.startMission({ scenarioId });
@@ -72,6 +85,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     }
   },
   setOpenInputText: (value: string) => set({ openInputText: value }),
+  setMentorUserMessage: (value: string) => set({ mentorUserMessage: value }),
   submitOpenInput: async () => {
     const state = get();
     if (!state.missionState) {
@@ -85,12 +99,20 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       openInput: { inputText: state.openInputText },
     };
     try {
-      const missionState = await PlatformClient.submitDecision(request);
+      const payload: DecisionResponse = await PlatformClient.submitDecision(request);
+      const evalLine = payload.feedback?.evaluation
+        ? `Score ${payload.feedback.evaluation.awardedScore}/100 — ${payload.feedback.evaluation.feedbackText}`
+        : '';
+      const npc = payload.feedback?.npcMessage?.trim() ?? '';
       set({
-        missionState,
+        missionState: payload.missionState,
         openInputText: '',
+        lastEvaluationSummary: evalLine,
+        lastNpcMessage: npc,
         isSubmitting: false,
-        statusMessage: missionState.isTerminal ? 'Scenario complete.' : 'Decision accepted.',
+        statusMessage: payload.missionState.isTerminal
+          ? 'Scenario complete.'
+          : 'Decision accepted.',
       });
     } catch (error) {
       set({
@@ -113,11 +135,15 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       branchingChoice: { choiceKey },
     };
     try {
-      const missionState = await PlatformClient.submitDecision(request);
+      const payload: DecisionResponse = await PlatformClient.submitDecision(request);
+      const npc = payload.feedback?.npcMessage?.trim() ?? '';
       set({
-        missionState,
+        missionState: payload.missionState,
+        lastNpcMessage: npc,
         isSubmitting: false,
-        statusMessage: missionState.isTerminal ? 'Scenario complete.' : 'Decision accepted.',
+        statusMessage: payload.missionState.isTerminal
+          ? 'Scenario complete.'
+          : 'Decision accepted.',
       });
     } catch (error) {
       set({
@@ -138,6 +164,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
         sessionId: state.missionState.sessionId,
         nodeId: state.missionState.currentNode.nodeId,
         clientSubmissionId: clientSubmissionId(),
+        userMessage: state.mentorUserMessage.trim() || undefined,
       });
       set({
         missionState: response.missionState,

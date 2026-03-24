@@ -2,13 +2,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createApp } from './app';
 import { TestAuthResolver } from './auth';
-import { DeterministicEvaluationEngine } from './evaluator';
+import { DeterministicEvaluationEngine, TemplateMentorHintGenerator } from './evaluator';
 import { InMemoryPersistence } from './persistence';
 
 function appWithMemory() {
   return createApp({
     authResolver: new TestAuthResolver(),
     evaluator: new DeterministicEvaluationEngine(),
+    mentorHintGenerator: new TemplateMentorHintGenerator(),
+    evaluationModelId: 'test-deterministic',
     persistence: new InMemoryPersistence(),
   });
 }
@@ -62,7 +64,7 @@ describe('mission contracts', () => {
         sessionId: missionState.sessionId,
         nodeId: missionState.currentNode.nodeId,
         clientSubmissionId: 'sub-1',
-        branchingChoice: { choiceKey: 'option_a' },
+        branchingChoice: { choiceKey: 'route_legal_first' },
       },
     });
 
@@ -77,7 +79,7 @@ describe('mission contracts', () => {
         sessionId: missionState.sessionId,
         nodeId: missionState.currentNode.nodeId,
         clientSubmissionId: 'sub-1',
-        branchingChoice: { choiceKey: 'option_a' },
+        branchingChoice: { choiceKey: 'route_legal_first' },
       },
     });
 

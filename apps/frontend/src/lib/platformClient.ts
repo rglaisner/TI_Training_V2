@@ -95,7 +95,7 @@ export const PlatformClient = {
     return payload.missionState;
   },
 
-  async submitDecision(request: DecisionRequest): Promise<MissionState> {
+  async submitDecision(request: DecisionRequest): Promise<DecisionResponse> {
     const response = await fetch(`${apiBaseUrl}/api/missions/decision`, {
       method: 'POST',
       headers: await buildHeaders(),
@@ -106,10 +106,7 @@ export const PlatformClient = {
       return parseError(response, 'Decision submit failed');
     }
 
-    const payload: DecisionResponse = DecisionResponseSchema.parse(
-      await safeJson(response),
-    );
-    return payload.missionState;
+    return DecisionResponseSchema.parse(await safeJson(response));
   },
 
   async invokeMentor(request: MentorRequest): Promise<MentorResponse> {

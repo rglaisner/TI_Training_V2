@@ -58,6 +58,14 @@ export interface NodeOpenInputConfig {
 export interface BranchingOption {
   choiceKey: string;
   label: string;
+  /** Graph edge: node to enter after this choice (use `terminal-1` to end the mission). */
+  nextNodeId: string;
+}
+
+/** Optional run metadata so the UI can show variation without hiding that the mission is personalized. */
+export interface MissionRunMetadata {
+  sessionSeed: number;
+  variantLabel: string;
 }
 
 export interface NodeContext {
@@ -67,6 +75,11 @@ export interface NodeContext {
   openInputConfig?: NodeOpenInputConfig;
   /** Shown when `type === 'branching'` (except terminal summary nodes). */
   branchingOptions?: BranchingOption[];
+  /**
+   * When `type === 'open_input'`, the node to enter after a successful open-input evaluation
+   * (use `terminal-1` to end after this step).
+   */
+  nextNodeId?: string;
 }
 
 export interface MissionState {
@@ -74,6 +87,7 @@ export interface MissionState {
   currentNode: NodeContext;
   profileMetrics: ProfileMetrics;
   isTerminal: boolean;
+  runMetadata?: MissionRunMetadata;
 }
 
 export interface ApiError {
@@ -136,6 +150,8 @@ export interface MentorRequest {
   nodeId: string;
   clientSubmissionId: string;
   challengeText?: string;
+  /** Learner message for a short Socratic exchange (optional). */
+  userMessage?: string;
 }
 
 export interface MentorResponse {
@@ -208,6 +224,12 @@ export const NodeOpenInputConfigSchema = z.object({
 export const BranchingOptionSchema = z.object({
   choiceKey: z.string().min(1),
   label: z.string().min(1),
+  nextNodeId: z.string().min(1),
+});
+
+export const MissionRunMetadataSchema = z.object({
+  sessionSeed: z.number().int(),
+  variantLabel: z.string().min(1),
 });
 
 export const NodeContextSchema = z
@@ -217,6 +239,7 @@ export const NodeContextSchema = z
     sceneText: z.string().min(1),
     openInputConfig: NodeOpenInputConfigSchema.optional(),
     branchingOptions: z.array(BranchingOptionSchema).optional(),
+    nextNodeId: z.string().min(1).optional(),
   })
   .superRefine((val, ctx) => {
     if (val.type === 'open_input' && !val.openInputConfig) {
@@ -226,11 +249,19 @@ export const NodeContextSchema = z
         path: ['openInputConfig'],
       });
     }
+    if (val.type === 'open_input' && val.nodeId !== 'terminal-1' && !val.nextNodeId) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'open_input nodes require nextNodeId (except terminal-1)',
+        path: ['nextNodeId'],
+      });
+    }
     if (val.type === 'branching' && val.nodeId !== 'terminal-1') {
-      if (!val.branchingOptions || val.branchingOptions.length < 2) {
+      if (!val.branchingOptions || val.branchingOptions.length < 3) {
         ctx.addIssue({
           code: 'custom',
-          message: 'branching nodes require at least two branchingOptions (except terminal-1)',
+          message:
+            'branching nodes require at least three branchingOptions (except terminal-1) — avoid false binary choices',
           path: ['branchingOptions'],
         });
       }
@@ -242,6 +273,7 @@ export const MissionStateSchema = z.object({
   currentNode: NodeContextSchema,
   profileMetrics: ProfileMetricsSchema,
   isTerminal: z.boolean(),
+  runMetadata: MissionRunMetadataSchema.optional(),
 });
 
 export const StartMissionRequestSchema = z.object({
@@ -322,6 +354,7 @@ export const MentorRequestSchema = z.object({
   nodeId: z.string().min(1),
   clientSubmissionId: z.string().min(1),
   challengeText: z.string().optional(),
+  userMessage: z.string().optional(),
 });
 
 export const MentorResponseSchema = z.object({

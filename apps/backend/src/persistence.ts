@@ -14,6 +14,7 @@ export interface SessionRecord {
   isTerminal: boolean;
   turnId: number;
   profileMetrics: ProfileMetrics;
+  sessionSeed?: number;
 }
 
 export interface MissionPersistence {

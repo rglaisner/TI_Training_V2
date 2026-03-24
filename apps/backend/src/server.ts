@@ -18,7 +18,12 @@ for (const relativeName of ['.env', '.env.local'] as const) {
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { createApp } from './app';
 import { FirebaseAuthResolver, TestAuthResolver } from './auth';
-import { DeterministicEvaluationEngine } from './evaluator';
+import { DeterministicEvaluationEngine, TemplateMentorHintGenerator } from './evaluator';
+import {
+  GeminiEvaluationEngine,
+  GeminiMentorHintGenerator,
+  ResilientGeminiMentorHintGenerator,
+} from './geminiLlm';
 import { FirestorePersistence } from './firestorePersistence';
 import { InMemoryPersistence } from './persistence';
 
@@ -46,14 +51,31 @@ const persistence = useInMemoryPersistence
   ? new InMemoryPersistence()
   : new FirestorePersistence(admin.firestore());
 
+const geminiKey = process.env.GEMINI_API_KEY?.trim();
+const geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash';
+
+const templateMentor = new TemplateMentorHintGenerator();
+
+const evaluator = geminiKey
+  ? new GeminiEvaluationEngine({ apiKey: geminiKey, model: geminiModel })
+  : new DeterministicEvaluationEngine();
+
+const mentorHintGenerator = geminiKey
+  ? new ResilientGeminiMentorHintGenerator(
+      new GeminiMentorHintGenerator({ apiKey: geminiKey, model: geminiModel }),
+      templateMentor,
+    )
+  : templateMentor;
+
 const app = createApp({
   authResolver,
   persistence,
-  evaluator: new DeterministicEvaluationEngine(),
+  evaluator,
+  mentorHintGenerator,
+  evaluationModelId: geminiKey ? geminiModel : 'deterministic-heuristic',
 });
 
 const port = Number(process.env.PORT ?? 4000);
 const host = process.env.HOST ?? '0.0.0.0';
 
 await app.listen({ port, host });
-

@@ -1,6 +1,6 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import {
   ApiErrorSchema,
   DecisionRequestSchema,
@@ -15,25 +15,32 @@ import {
   type MentorResponse,
   type MissionEvent,
   type MissionState,
-  NodeContextSchema,
   type NodeContext,
   type ProfileMetrics,
   type TICompetency,
 } from '@ti-training/shared';
-import { createDefaultProfileMetrics } from './domain';
+import {
+  createDefaultProfileMetrics,
+  mergeProfileAfterOpenInputEvaluation,
+} from './domain';
 import type { AuthContext, AuthResolver } from './auth';
-import type { EvaluationEngine } from './evaluator';
+import type { EvaluationEngine, MentorHintGenerator } from './evaluator';
+import { primaryTargetCompetency } from './geminiLlm';
 import type { MissionPersistence, SessionRecord } from './persistence';
 import {
   createTerminalNodeContext,
   getScenarioNode,
   isScenarioSupported,
+  runMetadataForSeed,
 } from './scenarioCatalog';
 
 interface AppDeps {
   authResolver: AuthResolver;
   persistence: MissionPersistence;
   evaluator: EvaluationEngine;
+  mentorHintGenerator: MentorHintGenerator;
+  /** Included on evaluation events / logs when using an LLM. */
+  evaluationModelId?: string;
 }
 
 function sendApiError(reply: FastifyReply, error: ApiError, statusCode: number): void {
@@ -45,36 +52,19 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function createNodeContext(params: {
-  nodeId: string;
-  type: 'branching' | 'open_input';
-  sceneText: string;
-  openInputConfig?: {
-    targetCompetencies: TICompetency[];
-    evaluationPrompt: string;
-  };
-  branchingOptions?: { choiceKey: string; label: string }[];
-}): NodeContext {
-  return NodeContextSchema.parse({
-    nodeId: params.nodeId,
-    type: params.type,
-    sceneText: params.sceneText,
-    openInputConfig: params.openInputConfig,
-    branchingOptions: params.branchingOptions,
-  });
-}
-
 function buildMissionState(params: {
   sessionId: string;
   currentNode: NodeContext;
   profileMetrics: ProfileMetrics;
   isTerminal: boolean;
+  runMetadata?: { sessionSeed: number; variantLabel: string };
 }): MissionState {
   return MissionStateSchema.parse({
     sessionId: params.sessionId,
     currentNode: params.currentNode,
     profileMetrics: params.profileMetrics,
     isTerminal: params.isTerminal,
+    runMetadata: params.runMetadata,
   });
 }
 
@@ -183,6 +173,7 @@ export function createApp(deps: AppDeps) {
       }
 
       const sessionId = randomUUID();
+      const sessionSeed = randomInt(-0x7fff_ffff, 0x7fff_ffff);
       const profileMetrics =
         (await deps.persistence.getProfile(authContext.tenantId, authContext.userId)) ??
         createDefaultProfileMetrics();
@@ -200,7 +191,9 @@ export function createApp(deps: AppDeps) {
         return;
       }
 
-      const currentNode = getScenarioNode(parsed.data.scenarioId, 'node-1');
+      const currentNode = getScenarioNode(parsed.data.scenarioId, 'node-1', {
+        sessionSeed,
+      });
       if (!currentNode) {
         sendApiError(
           reply,
@@ -224,6 +217,7 @@ export function createApp(deps: AppDeps) {
         isTerminal: false,
         turnId: 0,
         profileMetrics,
+        sessionSeed,
       };
       await deps.persistence.upsertSession(sessionRecord);
 
@@ -232,6 +226,7 @@ export function createApp(deps: AppDeps) {
         currentNode,
         profileMetrics,
         isTerminal: false,
+        runMetadata: runMetadataForSeed(sessionSeed),
       });
 
       const response = StartMissionResponseSchema.parse({
@@ -358,18 +353,84 @@ export function createApp(deps: AppDeps) {
       }
 
       const nextTurnId = session.turnId + 1;
-      const isOpenInput = payload.openInput !== undefined;
-      let awardedScore = 50;
-      let demonstrated = false;
-      let feedbackText = 'Decision captured.';
-      let rawScore = 0.5;
-      let rawScale: 'zero_to_one' | 'zero_to_one_hundred' = 'zero_to_one';
+      const sessionSeed = session.sessionSeed ?? 0;
+      const variant = { sessionSeed };
+      const runMeta = runMetadataForSeed(sessionSeed);
 
-      if (isOpenInput) {
+      const currentNode = getScenarioNode(session.scenarioId, session.currentNodeId, variant);
+      if (!currentNode) {
+        sendApiError(
+          reply,
+          {
+            code: 'SCENARIO_CONFIG',
+            message: 'Scenario node missing on server',
+            requestId,
+          },
+          500,
+        );
+        return;
+      }
+
+      const isOpenInput = payload.openInput !== undefined;
+      let awardedScore = 0;
+      let demonstrated = false;
+      let feedbackText = 'Route recorded.';
+      let rawScore = 0;
+      let rawScale: 'zero_to_one' | 'zero_to_one_hundred' = 'zero_to_one';
+      let evaluationTarget: TICompetency = 'ti_data_integrity';
+
+      let nextNodeId: string;
+      if (payload.branchingChoice) {
+        const choiceKey = payload.branchingChoice.choiceKey;
+        const option = currentNode.branchingOptions?.find((opt) => opt.choiceKey === choiceKey);
+        if (!option) {
+          await deps.persistence.appendEvent(
+            createDecisionRejectedEvent({
+              context: authContext,
+              requestId,
+              scenarioId: session.scenarioId,
+              sessionId: session.sessionId,
+              nodeId: payload.nodeId,
+              turnId: session.turnId,
+              reason: 'INVALID_CHOICE',
+            }),
+          );
+          sendApiError(
+            reply,
+            {
+              code: 'INVALID_CHOICE',
+              message: 'choiceKey does not match an option on this node',
+              requestId,
+            },
+            422,
+          );
+          return;
+        }
+        nextNodeId = option.nextNodeId;
+      } else if (isOpenInput) {
+        if (!currentNode.nextNodeId) {
+          sendApiError(
+            reply,
+            {
+              code: 'SCENARIO_CONFIG',
+              message: 'Open-input node has no nextNodeId',
+              requestId,
+            },
+            500,
+          );
+          return;
+        }
+        nextNodeId = currentNode.nextNodeId;
+        const rubric = currentNode.openInputConfig?.evaluationPrompt ?? '';
+        evaluationTarget = primaryTargetCompetency(
+          currentNode.openInputConfig?.targetCompetencies ?? ['ti_data_integrity'],
+        );
         try {
           const evaluation = await deps.evaluator.evaluateOpenInput({
             inputText: payload.openInput?.inputText ?? '',
-            targetCompetency: 'ti_data_integrity',
+            targetCompetency: evaluationTarget,
+            sceneContext: currentNode.sceneText,
+            evaluationRubric: rubric,
           });
           awardedScore = evaluation.awardedScore;
           demonstrated = evaluation.demonstrated;
@@ -377,6 +438,40 @@ export function createApp(deps: AppDeps) {
           rawScore = evaluation.rawScore;
           rawScale = evaluation.rawScale;
         } catch (error) {
+          const msg = error instanceof Error ? error.message : 'Unknown error';
+          if (msg.startsWith('GEMINI_EVAL_FAILED')) {
+            await deps.persistence.appendEvent({
+              eventType: 'EVALUATION_LLM_ERROR',
+              eventId: randomUUID(),
+              tenantId: authContext.tenantId,
+              timestamp: nowIso(),
+              profileHash: authContext.profileHash,
+              sessionId: session.sessionId,
+              nodeId: session.currentNodeId,
+              turnId: nextTurnId,
+              correlationId: requestId,
+              scenarioId: session.scenarioId,
+              reason: msg,
+            });
+            app.log.error({
+              event: 'EVALUATION_LLM_ERROR',
+              requestId,
+              tenantId: authContext.tenantId,
+              sessionId: payload.sessionId,
+              nodeId: payload.nodeId,
+              reason: msg,
+            });
+            sendApiError(
+              reply,
+              {
+                code: 'EVALUATION_UNAVAILABLE',
+                message: 'Evaluation service unavailable; try again shortly',
+                requestId,
+              },
+              503,
+            );
+            return;
+          }
           await deps.persistence.appendEvent({
             eventType: 'EVALUATION_JSON_INVALID',
             eventId: randomUUID(),
@@ -392,7 +487,7 @@ export function createApp(deps: AppDeps) {
             issues: [
               {
                 path: 'EvaluationJsonSchema',
-                message: error instanceof Error ? error.message : 'Unknown error',
+                message: msg,
               },
             ],
           });
@@ -412,38 +507,65 @@ export function createApp(deps: AppDeps) {
             sessionId: payload.sessionId,
             nodeId: payload.nodeId,
             clientSubmissionId: payload.clientSubmissionId,
+            issues: msg,
           });
           return;
         }
+      } else {
+        sendApiError(
+          reply,
+          {
+            code: 'INVALID_DECISION_REQUEST',
+            message: 'Decision must include branchingChoice or openInput',
+            requestId,
+          },
+          422,
+        );
+        return;
       }
 
-      const updatedProfile: ProfileMetrics = {
+      const xpGain = isOpenInput ? (demonstrated ? 12 : 7) : 4;
+      const foundationGain = isOpenInput ? (demonstrated ? 5 : 3) : 2;
+
+      const evaluatedAt = nowIso();
+      const profileAfterXp: ProfileMetrics = {
         ...session.profileMetrics,
-        totalXP: session.profileMetrics.totalXP + 5,
+        totalXP: session.profileMetrics.totalXP + xpGain,
         categoryXP: {
           ...session.profileMetrics.categoryXP,
-          FOUNDATIONS: session.profileMetrics.categoryXP.FOUNDATIONS + 2,
+          FOUNDATIONS: session.profileMetrics.categoryXP.FOUNDATIONS + foundationGain,
         },
       };
+
+      const updatedProfile: ProfileMetrics =
+        isOpenInput && currentNode.openInputConfig
+          ? mergeProfileAfterOpenInputEvaluation({
+              profile: profileAfterXp,
+              targetCompetencies: currentNode.openInputConfig.targetCompetencies,
+              awardedScore,
+              demonstrated,
+              evaluatedAtIso: evaluatedAt,
+            })
+          : profileAfterXp;
       await deps.persistence.upsertProfile(
         authContext.tenantId,
         authContext.userId,
         updatedProfile,
       );
 
-      const isTerminal = nextTurnId >= 2;
+      let isTerminal = false;
       let nextNode: NodeContext;
-      if (isTerminal) {
+      if (nextNodeId === 'terminal-1') {
         nextNode = createTerminalNodeContext();
+        isTerminal = true;
       } else {
-        const nextId = `node-${nextTurnId + 1}`;
-        const resolved = getScenarioNode(session.scenarioId, nextId);
+        const resolved = getScenarioNode(session.scenarioId, nextNodeId, variant);
         if (!resolved) {
           sendApiError(
             reply,
             {
               code: 'SCENARIO_CONFIG',
-              message: `Scenario is missing configured node ${nextId}`,
+              message: `Scenario is missing configured node ${nextNodeId}`,
               requestId,
             },
             500,
@@ -458,6 +580,7 @@ export function createApp(deps: AppDeps) {
         currentNode: nextNode,
         profileMetrics: updatedProfile,
         isTerminal,
+        runMetadata: runMeta,
       });
 
       await deps.persistence.upsertSession({
@@ -467,6 +590,7 @@ export function createApp(deps: AppDeps) {
         currentNodeType: nextNode.type,
         isTerminal,
         profileMetrics: updatedProfile,
+        sessionSeed,
       });
 
       await deps.persistence.appendEvent({
@@ -485,8 +609,9 @@ export function createApp(deps: AppDeps) {
         rawScale,
         demonstrated,
         feedbackText,
-        promptVersion: 'v1',
-        scoringVersion: 'v1',
+        promptVersion: 'v2-design-led',
+        scoringVersion: 'v2',
+        modelId: deps.evaluationModelId,
         retryAttempted: false,
       });
 
@@ -501,15 +626,21 @@ export function createApp(deps: AppDeps) {
       const response: DecisionResponse = {
         missionState,
         feedback: {
-          npcMessage: demonstrated
-            ? 'Decision accepted. Keep pressure on the evidence.'
-            : 'Decision captured; tighten your reasoning on the next turn.',
-          evaluation: {
-            targetCompetency: 'ti_data_integrity',
-            awardedScore,
-            demonstrated,
-            feedbackText,
-          },
+          npcMessage: isOpenInput
+            ? demonstrated
+              ? 'Strong signal on the rubric—carry that discipline forward.'
+              : 'Captured. Tighten specificity and boundaries on the next beat.'
+            : 'Route locked. The next screen reflects that stance.',
+          ...(isOpenInput
+            ? {
+                evaluation: {
+                  targetCompetency: evaluationTarget,
+                  awardedScore,
+                  demonstrated,
+                  feedbackText,
+                },
+              }
+            : {}),
         },
         meta: {
           turnId: nextTurnId,
@@ -603,33 +734,27 @@ export function createApp(deps: AppDeps) {
         return;
       }
 
-      // Mentor must not advance the node graph — restore full scenario copy for this node.
-      const restoredNode =
-        getScenarioNode(session.scenarioId, session.currentNodeId) ??
-        createNodeContext({
-          nodeId: session.currentNodeId,
-          type: session.currentNodeType,
-          sceneText: 'This step has no scenario copy on the server yet.',
-          openInputConfig:
-            session.currentNodeType === 'open_input'
-              ? {
-                  targetCompetencies: ['ti_data_integrity' as TICompetency],
-                  evaluationPrompt: 'Mentor guidance only',
-                }
-              : undefined,
-          branchingOptions:
-            session.currentNodeType === 'branching'
-              ? [
-                  { choiceKey: 'option_a', label: 'Option A' },
-                  { choiceKey: 'option_b', label: 'Option B' },
-                ]
-              : undefined,
-        });
+      const sessionSeed = session.sessionSeed ?? 0;
+      const variant = { sessionSeed };
+      const restoredNode = getScenarioNode(session.scenarioId, session.currentNodeId, variant);
+      if (!restoredNode) {
+        sendApiError(
+          reply,
+          {
+            code: 'SCENARIO_CONFIG',
+            message: 'Scenario node missing for mentor restore',
+            requestId,
+          },
+          500,
+        );
+        return;
+      }
       const missionState = buildMissionState({
         sessionId: session.sessionId,
         currentNode: restoredNode,
         profileMetrics: session.profileMetrics,
         isTerminal: session.isTerminal,
+        runMetadata: runMetadataForSeed(sessionSeed),
       });
 
       await deps.persistence.setCachedMentor(
@@ -652,13 +777,30 @@ export function createApp(deps: AppDeps) {
         scenarioId: session.scenarioId,
       });
 
+      let mentorMessage: string;
+      try {
+        mentorMessage = await deps.mentorHintGenerator.generateHint({
+          sceneText: restoredNode.sceneText,
+          userMessage: payload.userMessage,
+          challengeText: payload.challengeText,
+        });
+      } catch (error) {
+        app.log.error({
+          event: 'MENTOR_HINT_FAILED',
+          requestId,
+          tenantId: authContext.tenantId,
+          sessionId: payload.sessionId,
+          nodeId: payload.nodeId,
+          error: error instanceof Error ? error.message : 'unknown',
+        });
+        mentorMessage =
+          'State your decision in one line, then add one metric and one explicit risk or boundary you will not cross.';
+      }
+
       const response: MentorResponse = {
         missionState,
         mentorHint: {
-          message:
-            payload.challengeText?.trim().length
-              ? `Mentor hint: lead with the decision, then justify with one metric from "${payload.challengeText.slice(0, 25)}".`
-              : 'Mentor hint: start with your decision, then defend it with one metric and one risk.',
+          message: mentorMessage,
         },
         meta: {
           turnId: session.turnId,
