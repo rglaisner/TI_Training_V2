@@ -21,8 +21,16 @@ Use the **Render MCP** (`user-render`) for logs, deploy status, and service deta
 
 ## API (Render)
 
-- **Blueprint / settings** match [`render.yaml`](../render.yaml): `npm ci`, backend workspace build, start with **`npx tsx apps/backend/src/server.ts`**.  
-  Plain `node apps/backend/dist/server.js` fails on Render with `ERR_MODULE_NOT_FOUND` for extensionless ESM relative imports; `tsx` matches local `npm run dev` resolution.
+- **Build command** (Settings): `npm ci && npm run build --workspace=@ti-training/backend`
+- **Start command** (Settings): you **must** set this exactly in the Render dashboard (the service does **not** always pick up `render.yaml` after the first create):
+
+  ```text
+  npx tsx apps/backend/src/server.ts
+  ```
+
+  If the start command is still `node apps/backend/dist/server.js`, the service crashes with `ERR_MODULE_NOT_FOUND` (Node ESM cannot resolve extensionless `./app` imports from `tsc` output). After changing the start command, click **Manual Deploy** → **Deploy latest commit**.
+
+- [`render.yaml`](../render.yaml) in the repo documents the same commands for Blueprint / reference.
 - **Secret:** `FIREBASE_SERVICE_ACCOUNT_JSON` (full service account JSON, Zod-validated on boot).
 - Optional: `GEMINI_API_KEY`, `GEMINI_MODEL` — [`docs/gemini-and-missions.md`](gemini-and-missions.md).
 - **Health:** `GET /health` → `{ "status": "ok" }`.
