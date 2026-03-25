@@ -5,12 +5,14 @@ import {
   ApiErrorSchema,
   DecisionRequestSchema,
   DecisionResponseSchema,
+  AvailableScenariosResponseSchema,
   MentorRequestSchema,
   MentorResponseSchema,
   MissionStateSchema,
   StartMissionRequestSchema,
   StartMissionResponseSchema,
   type ApiError,
+  type AvailableScenariosResponse,
   type DecisionResponse,
   type MentorResponse,
   type MissionEvent,
@@ -31,6 +33,7 @@ import {
   createTerminalNodeContext,
   getScenarioNode,
   isScenarioSupported,
+  listSupportedScenarios,
   runMetadataForSeed,
 } from './scenarioCatalog';
 
@@ -145,6 +148,26 @@ export function createApp(deps: AppDeps) {
   });
 
   app.get('/health', async () => ({ status: 'ok' }));
+
+  app.get('/api/scenarios/available', async (request, reply) => {
+    const requestId = randomUUID();
+    try {
+      await deps.authResolver.resolve(request);
+    } catch (error) {
+      sendApiError(reply, parseAuthError(error, requestId), 401);
+      return;
+    }
+
+    // Tenant-specific enablement can be layered later; for now we return all supported scenarios.
+    const payload: AvailableScenariosResponse = {
+      scenarios: listSupportedScenarios().map((s) => ({
+        ...s,
+        // Future: filter or adjust `enabled` based on authContext.tenantId.
+      })),
+    };
+
+    reply.send(AvailableScenariosResponseSchema.parse(payload));
+  });
 
   app.post(
     '/api/missions/start',

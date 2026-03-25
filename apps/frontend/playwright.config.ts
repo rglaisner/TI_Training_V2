@@ -19,7 +19,7 @@ export default defineConfig({
       NEXT_PUBLIC_TEST_TENANT_ID: 'e2e-tenant',
       NEXT_PUBLIC_TEST_USER_ID: 'e2e-user',
       // Relative `/api/...` fetches match page.route by pathname (works with any host:port).
-      NEXT_PUBLIC_API_BASE_URL: '',
+      NEXT_PUBLIC_API_BASE_URL: process.env.E2E_API_BASE_URL ?? '',
       NEXT_PUBLIC_FIREBASE_API_KEY: 'playwright-e2e-placeholder',
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: 'playwright-e2e.local',
       NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'playwright-e2e',

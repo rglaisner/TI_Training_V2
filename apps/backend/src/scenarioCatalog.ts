@@ -1,4 +1,9 @@
-import { NodeContextSchema, type NodeContext, type TICompetency } from '@ti-training/shared';
+import {
+  NodeContextSchema,
+  type NodeContext,
+  type TICompetency,
+  type ScenarioCard,
+} from '@ti-training/shared';
 
 const TI_DATA: TICompetency = 'ti_data_integrity';
 const TI_STAKE: TICompetency = 'ti_stakeholder_mgmt';
@@ -111,6 +116,27 @@ const SCENARIO_NODES: Record<string, Record<string, NodeContext>> = {
     },
   },
 };
+
+const SCENARIO_CARDS: Record<string, Omit<ScenarioCard, 'scenarioId'>> = {
+  'scenario-1': {
+    label: 'NDA Pressure Readout (CHRO) — Mission 1',
+    enabled: true,
+    featured: true,
+    pushRank: 1,
+  },
+};
+
+export function listSupportedScenarios(): ScenarioCard[] {
+  const ids = Object.keys(SCENARIO_NODES);
+  return ids
+    .map((scenarioId): ScenarioCard | null => {
+      const card = SCENARIO_CARDS[scenarioId];
+      if (!card) return null;
+      return { scenarioId, ...card };
+    })
+    .filter((v): v is ScenarioCard => v !== null)
+    .sort((a, b) => (a.pushRank ?? 0) - (b.pushRank ?? 0));
+}
 
 const VARIANT_TABLE = [
   { company: 'Northbridge Labs', metric: 14, label: 'Northbridge • contractor signal +14%' },

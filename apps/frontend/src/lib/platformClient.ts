@@ -1,5 +1,6 @@
 import type {
   ApiError,
+  AvailableScenariosResponse,
   DecisionRequest,
   DecisionResponse,
   MentorRequest,
@@ -10,6 +11,7 @@ import type {
 } from '@ti-training/shared';
 import {
   ApiErrorSchema,
+  AvailableScenariosResponseSchema,
   DecisionResponseSchema,
   MentorResponseSchema,
   StartMissionResponseSchema,
@@ -17,7 +19,10 @@ import {
 } from '@ti-training/shared';
 import { getFirebaseAuth } from './firebaseClient';
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+const apiBaseUrl =
+  typeof process.env.NEXT_PUBLIC_API_BASE_URL === 'string' && process.env.NEXT_PUBLIC_API_BASE_URL.trim().length > 0
+    ? process.env.NEXT_PUBLIC_API_BASE_URL
+    : 'http://localhost:4000';
 
 class PlatformClientError extends Error {
   constructor(
@@ -95,6 +100,19 @@ export const PlatformClient = {
 
     const payload = StartMissionResponseSchema.parse(await safeJson(response));
     return payload.missionState;
+  },
+
+  async getAvailableScenarios(): Promise<AvailableScenariosResponse> {
+    const response = await fetch(`${apiBaseUrl}/api/scenarios/available`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+    });
+
+    if (!response.ok) {
+      return parseError(response, 'Available scenarios fetch failed');
+    }
+
+    return AvailableScenariosResponseSchema.parse(await safeJson(response));
   },
 
   async submitDecision(request: DecisionRequest): Promise<DecisionResponse> {

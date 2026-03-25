@@ -90,6 +90,20 @@ export interface MissionState {
   runMetadata?: MissionRunMetadata;
 }
 
+export interface ScenarioCard {
+  scenarioId: string;
+  label: string;
+  enabled: boolean;
+  featured: boolean;
+  comingSoon?: boolean;
+  /** Higher means it should be shown earlier in the “push” ordering. */
+  pushRank?: number;
+}
+
+export interface AvailableScenariosResponse {
+  scenarios: ScenarioCard[];
+}
+
 export interface ApiError {
   code: string;
   message: string;
@@ -274,6 +288,19 @@ export const MissionStateSchema = z.object({
   profileMetrics: ProfileMetricsSchema,
   isTerminal: z.boolean(),
   runMetadata: MissionRunMetadataSchema.optional(),
+});
+
+export const ScenarioCardSchema = z.object({
+  scenarioId: z.string().min(1),
+  label: z.string().min(1),
+  enabled: z.boolean(),
+  featured: z.boolean(),
+  comingSoon: z.boolean().optional(),
+  pushRank: z.number().int().nonnegative().optional(),
+});
+
+export const AvailableScenariosResponseSchema = z.object({
+  scenarios: z.array(ScenarioCardSchema),
 });
 
 export const StartMissionRequestSchema = z.object({
