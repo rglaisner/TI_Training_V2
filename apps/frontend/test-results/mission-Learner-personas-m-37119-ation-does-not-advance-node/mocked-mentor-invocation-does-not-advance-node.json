@@ -1,0 +1,19 @@
+{
+  "persona": "Learner - Mentor assist",
+  "testTitle": "mentor invocation does not advance node",
+  "status": "passed",
+  "generatedAt": "2026-03-25T11:24:10.952Z",
+  "expectedUXChecks": [
+    "Mentor hint appears",
+    "Scene does not advance"
+  ],
+  "selectorsToInspect": [
+    "[data-testid=\"mentor-button\"]",
+    "[data-testid=\"mentor-hint-region\"]",
+    "[data-testid=\"scene-text\"]"
+  ],
+  "suggestedUiChanges": [
+    "If mentor feels too “long”: constrain answer length + tone in microcopy.",
+    "If mentor interrupts clarity: show a short “node unchanged” status line."
+  ]
+}

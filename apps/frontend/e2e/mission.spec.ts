@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Page, TestInfo } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { tiCompetencyValues } from '@ti-training/shared';
 
@@ -135,8 +136,8 @@ function artifactForTestTitle(testTitle: string): PersonaArtifact {
 }
 
 async function writePersonaRunArtifacts(params: {
-  testInfo: { outputPath: (path: string) => string; title: string; status: string; error?: unknown };
-  page: { screenshot: (arg: { path: string; fullPage: boolean }) => Promise<void> };
+  testInfo: TestInfo;
+  page: Page;
   artifactName: string;
   artifact: PersonaArtifact;
 }) {
@@ -151,7 +152,7 @@ async function writePersonaRunArtifacts(params: {
       {
         persona: artifact.persona,
         testTitle: testInfo.title,
-        status: testInfo.status,
+        status: testInfo.status ?? 'unknown',
         generatedAt: new Date().toISOString(),
         expectedUXChecks: artifact.expectedUXChecks,
         selectorsToInspect: artifact.selectorsToInspect,
@@ -236,7 +237,7 @@ const startResponse = {
 test.describe('Learner personas (mocked API)', () => {
   test.beforeEach(async ({ page }) => {
     if (useStaging) {
-      test.skip('Mocked mode only. Set E2E_TARGET=staging to run staging tests.');
+      test.skip(true, 'Mocked mode only. Set E2E_TARGET=staging to run staging tests.');
     }
   await page.route(missionStartUrl, async (route) => {
     await route.fulfill({
@@ -501,7 +502,7 @@ test.describe('Learner personas (staging backend)', () => {
   test.describe.configure({ timeout: 120_000 });
   test.beforeEach(async ({ page }) => {
     if (!useStaging) {
-      test.skip('Staging mode only. Set E2E_TARGET=staging to run.');
+      test.skip(true, 'Staging mode only. Set E2E_TARGET=staging to run.');
     }
 
     const apiBaseUrlRaw = process.env.E2E_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
@@ -531,7 +532,7 @@ test.describe('Learner personas (staging backend)', () => {
           | { code?: string; message?: string }
           | undefined;
         if (payload?.code === 'UNAUTHORIZED' || payload?.message === 'Authorization token is required') {
-          test.skip('Staging backend requires Firebase Authorization; test auth headers are not accepted.');
+          test.skip(true, 'Staging backend requires Firebase Authorization; test auth headers are not accepted.');
         }
       }
     }
@@ -555,61 +556,43 @@ test.describe('Learner personas (staging backend)', () => {
   });
 
   test('branching -> open input -> terminal dossier via real API', async ({ page }) => {
-    await page.goto('/');
-    await page.getByTestId('scenario-card').click();
-    await expect(page.getByTestId('choice-route_legal_first')).toBeVisible({ timeout: 60_000 });
-    const legalFirstChoice = page.getByTestId('choice-route_legal_first');
+    const scenarioCard = page.getByTestId('scenario-card');
+    const choiceLegalFirst = page.getByTestId('choice-route_legal_first');
     const openInput = page.getByTestId('open-input');
     const submitButton = page.getByTestId('submit-button');
     const terminalDossier = page.getByTestId('terminal-dossier');
     const missionTimer = page.getByTestId('mission-timer');
 
-    // Backend evaluation can be briefly flaky in staging; retry branching until we reach open-input.
-    let advancedToOpenInput = false;
+    // If the backend advanced the session without the UI updating, repeating clicks within the same
+    // session can produce stale `nodeId` errors. For staging reliability, restart the mission
+    // session (full reload) and try again.
     let lastError: unknown = null;
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      await legalFirstChoice.click();
+    for (let missionAttempt = 1; missionAttempt <= 2; missionAttempt += 1) {
+      await page.goto('/');
+      await scenarioCard.click();
+      await expect(choiceLegalFirst).toBeVisible({ timeout: 60_000 });
+
+      await choiceLegalFirst.click();
+      await expect(openInput).toBeVisible({ timeout: 60_000 });
+      await expect(missionTimer).toBeVisible({ timeout: 60_000 });
+
+      // Open-input beat 1.
+      await openInput.fill('Staging answer 1');
+      await submitButton.click();
+      await expect(openInput).toBeVisible({ timeout: 60_000 });
+
+      // Open-input beat 2 -> terminal dossier.
+      await openInput.fill('Staging answer 2');
+      await submitButton.click();
+
       try {
-        await expect(openInput).toBeVisible({ timeout: 20_000 });
-        advancedToOpenInput = true;
-        break;
+        await expect(terminalDossier).toBeVisible({ timeout: 90_000 });
+        return;
       } catch (err) {
         lastError = err;
-        // On failure, we usually stay on branching with an error status; retry.
       }
     }
 
-    if (!advancedToOpenInput) {
-      throw lastError ?? new Error('Failed to reach open-input after branching retries.');
-    }
-
-    await expect(missionTimer).toBeVisible({ timeout: 20_000 });
-
-    // Open-input beat 1.
-    await openInput.fill('Staging answer 1');
-    await submitButton.click();
-
-    // Scenario pressure is also open-input in the current graph.
-    await expect(openInput).toBeVisible({ timeout: 60_000 });
-
-    // Open-input beat 2 -> terminal dossier.
-    await openInput.fill('Staging answer 2');
-
-    let reachedTerminal = false;
-    let lastSubmitError: unknown = null;
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      await submitButton.click();
-      try {
-        await expect(terminalDossier).toBeVisible({ timeout: 30_000 });
-        reachedTerminal = true;
-        break;
-      } catch (err) {
-        lastSubmitError = err;
-      }
-    }
-
-    if (!reachedTerminal) {
-      throw lastSubmitError ?? new Error('Failed to reach terminal dossier after open-input retries.');
-    }
+    throw lastError ?? new Error('Failed to complete mission via real API after session restarts.');
   });
 });

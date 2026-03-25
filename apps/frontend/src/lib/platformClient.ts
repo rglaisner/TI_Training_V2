@@ -78,12 +78,36 @@ async function buildHeaders(): Promise<Record<string, string>> {
 }
 
 async function parseError(response: Response, fallback: string): Promise<never> {
-  const payload = await safeJson(response).catch(() => undefined);
+  const status = response.status;
+  let text = '';
+  try {
+    text = await response.text();
+  } catch {
+    // ignore; we'll log fallback without body
+  }
+
+  let payload: unknown = undefined;
+  if (text.trim().length > 0) {
+    try {
+      payload = JSON.parse(text) as unknown;
+    } catch {
+      payload = undefined;
+    }
+  }
+
   const parsed = ApiErrorSchema.safeParse(payload);
   if (parsed.success) {
     throw new PlatformClientError(parsed.data.message, parsed.data);
   }
-  throw new PlatformClientError(fallback);
+
+  console.error({
+    event: 'PLATFORMCLIENT_API_ERROR_UNPARSEABLE',
+    status,
+    fallback,
+    bodySnippet: text.slice(0, 500),
+  });
+
+  throw new PlatformClientError(`${fallback} (HTTP ${status})`);
 }
 
 export const PlatformClient = {

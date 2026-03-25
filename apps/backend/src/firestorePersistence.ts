@@ -1,5 +1,6 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import type { MissionEvent, MissionState, ProfileMetrics } from '@ti-training/shared';
+import { ProfileMetricsSchema } from '@ti-training/shared';
 import type { MissionPersistence, SessionRecord } from './persistence';
 import { SessionRecordSchema } from './sessionRecordSchema';
 
@@ -65,7 +66,18 @@ export class FirestorePersistence implements MissionPersistence {
     if (!doc.exists) {
       return null;
     }
-    return doc.data() as ProfileMetrics;
+    const raw: unknown = doc.data();
+    const parsed = ProfileMetricsSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error({
+        event: 'PROFILE_FIRESTORE_SHAPE_INVALID',
+        tenantId,
+        userId,
+        issues: parsed.error.issues,
+      });
+      return null;
+    }
+    return parsed.data;
   }
 
   async upsertProfile(

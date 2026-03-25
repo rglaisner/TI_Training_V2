@@ -1,0 +1,19 @@
+{
+  "persona": "Learner - Completion review",
+  "testTitle": "terminal mission renders dossier section",
+  "status": "passed",
+  "generatedAt": "2026-03-25T11:24:12.385Z",
+  "expectedUXChecks": [
+    "Terminal dossier visible",
+    "XP/competency summaries readable"
+  ],
+  "selectorsToInspect": [
+    "[data-testid=\"terminal-dossier\"]",
+    "[data-testid=\"terminal-competencies\"]",
+    "[data-testid=\"terminal-labels\"]"
+  ],
+  "suggestedUiChanges": [
+    "If dossier feels overwhelming: limit to top competencies + progressive disclosure.",
+    "If trust is low: add “derived from profile signals” microcopy to avoid implying evidence replay."
+  ]
+}

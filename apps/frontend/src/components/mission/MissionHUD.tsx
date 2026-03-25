@@ -2,7 +2,6 @@
 
 import type { NodeContext } from '@ti-training/shared';
 import { useMissionStore } from '@/lib/missionStore';
-import { NarrativeModule } from './modules/NarrativeModule';
 import { InputModule } from './modules/InputModule';
 import { SocialModule } from './modules/SocialModule';
 import { TerminalModule } from './modules/TerminalModule';
