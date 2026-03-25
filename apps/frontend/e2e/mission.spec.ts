@@ -500,6 +500,10 @@ test.describe('Learner personas (mocked API)', () => {
 
 test.describe('Learner personas (staging backend)', () => {
   test.describe.configure({ timeout: 120_000 });
+
+  let stagingPreflightResolved = false;
+  let stagingPreflightSkipReason: string | null = null;
+
   test.beforeEach(async ({ page }) => {
     if (!useStaging) {
       test.skip(true, 'Staging mode only. Set E2E_TARGET=staging to run.');
@@ -511,28 +515,56 @@ test.describe('Learner personas (staging backend)', () => {
 
     // Preflight: if the staging backend requires Firebase auth (no test-auth escape hatch),
     // we skip instead of timing out on UI selectors.
-    if (apiBaseUrl) {
+    if (stagingPreflightResolved) {
+      if (stagingPreflightSkipReason) {
+        test.skip(true, stagingPreflightSkipReason);
+      }
+      return;
+    }
+
+    if (!apiBaseUrl) {
+      stagingPreflightResolved = true;
+      return;
+    }
+
+    {
       const tenantId = process.env.NEXT_PUBLIC_TEST_TENANT_ID ?? 'e2e-tenant';
       const userId = process.env.NEXT_PUBLIC_TEST_USER_ID ?? 'e2e-user';
       const role =
         process.env.NEXT_PUBLIC_TEST_ROLE === 'tenant_admin' ? 'tenant_admin' : 'tenant_user';
 
-      const resp = await page.request.post(`${apiBaseUrl}/api/missions/start`, {
-        data: { scenarioId: 'scenario-1' },
-        headers: {
-          'content-type': 'application/json',
-          'x-tenant-id': tenantId,
-          'x-user-id': userId,
-          'x-role': role,
-        },
-      });
+      try {
+        const resp = await page.request.post(`${apiBaseUrl}/api/missions/start`, {
+          data: { scenarioId: 'scenario-1' },
+          headers: {
+            'content-type': 'application/json',
+            'x-tenant-id': tenantId,
+            'x-user-id': userId,
+            'x-role': role,
+          },
+          // If the backend is down/sluggish, skip rather than failing the entire suite.
+          timeout: 60_000,
+        });
 
-      if (resp.status() === 401) {
-        const payload = (await resp.json().catch(() => undefined)) as
-          | { code?: string; message?: string }
-          | undefined;
-        if (payload?.code === 'UNAUTHORIZED' || payload?.message === 'Authorization token is required') {
-          test.skip(true, 'Staging backend requires Firebase Authorization; test auth headers are not accepted.');
+        if (resp.status() === 401) {
+          const payload = (await resp.json().catch(() => undefined)) as
+            | { code?: string; message?: string }
+            | undefined;
+          if (
+            payload?.code === 'UNAUTHORIZED' ||
+            payload?.message === 'Authorization token is required'
+          ) {
+            stagingPreflightSkipReason =
+              'Staging backend requires Firebase Authorization; test auth headers are not accepted.';
+          }
+        }
+      } catch (error: unknown) {
+        // Network/timeouts: still run the UI tests. The UI assertions will determine
+        // whether the backend is reachable and whether we get the expected nodes.
+      } finally {
+        stagingPreflightResolved = true;
+        if (stagingPreflightSkipReason) {
+          test.skip(true, stagingPreflightSkipReason);
         }
       }
     }

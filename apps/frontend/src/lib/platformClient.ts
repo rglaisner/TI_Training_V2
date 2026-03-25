@@ -134,16 +134,30 @@ export const PlatformClient = {
   },
 
   async getAvailableScenarios(): Promise<AvailableScenariosResponse> {
-    const response = await fetch(`${apiBaseUrl}/api/scenarios/available`, {
-      method: 'GET',
-      headers: await buildHeaders(),
-    });
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 15_000);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/scenarios/available`, {
+        method: 'GET',
+        headers: await buildHeaders(),
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      return parseError(response, 'Available scenarios fetch failed');
+      if (!response.ok) {
+        return parseError(response, 'Available scenarios fetch failed');
+      }
+
+      return AvailableScenariosResponseSchema.parse(await safeJson(response));
+    } catch (error: unknown) {
+      const name = error instanceof Error ? error.name : undefined;
+      const msg = error instanceof Error ? error.message : undefined;
+      if (name === 'AbortError' || (msg ?? '').toLowerCase().includes('abort')) {
+        throw new PlatformClientError('Available scenarios fetch timed out');
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
     }
-
-    return AvailableScenariosResponseSchema.parse(await safeJson(response));
   },
 
   async submitDecision(request: DecisionRequest): Promise<DecisionResponse> {
