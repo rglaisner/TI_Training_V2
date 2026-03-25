@@ -1,0 +1,22 @@
+{
+  "persona": "Learner - Voice transcript gating",
+  "testTitle": "voice transcript mode requires confirmation before scoring",
+  "status": "skipped",
+  "generatedAt": "2026-03-25T13:52:29.668Z",
+  "expectedUXChecks": [
+    "Submit disabled until transcript is confirmed",
+    "Confirmed transcript populates open-input",
+    "Terminal dossier renders after submission"
+  ],
+  "selectorsToInspect": [
+    "[data-testid=\"voice-mode-toggle\"]",
+    "[data-testid=\"voice-transcript-partial\"]",
+    "[data-testid=\"voice-confirm-transcript\"]",
+    "[data-testid=\"submit-button\"]",
+    "[data-testid=\"terminal-dossier\"]"
+  ],
+  "suggestedUiChanges": [
+    "If learners miss the confirm step: use louder copy + inline state badge.",
+    "If transcript confirmation is confusing: show “confirmed version used for scoring” label."
+  ]
+}

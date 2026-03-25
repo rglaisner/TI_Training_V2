@@ -1,0 +1,16 @@
+{
+  "persona": "Learner - UI gating by node type",
+  "testTitle": "after branching, open-input step shows textarea not branching buttons",
+  "status": "skipped",
+  "generatedAt": "2026-03-25T13:52:29.504Z",
+  "expectedUXChecks": [
+    "Branching buttons disappear on open-input nodes"
+  ],
+  "selectorsToInspect": [
+    "[data-testid=\"open-input\"]",
+    "[data-testid^=\"choice-\"]"
+  ],
+  "suggestedUiChanges": [
+    "If gating is unclear: add short helper text “Input is now the next required step”."
+  ]
+}

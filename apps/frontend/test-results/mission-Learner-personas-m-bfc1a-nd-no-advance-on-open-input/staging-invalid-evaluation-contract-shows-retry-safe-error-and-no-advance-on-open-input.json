@@ -1,0 +1,18 @@
+{
+  "persona": "Learner - Retry after scoring failure",
+  "testTitle": "invalid evaluation contract shows retry-safe error and no advance on open input",
+  "status": "skipped",
+  "generatedAt": "2026-03-25T13:52:29.094Z",
+  "expectedUXChecks": [
+    "Error banner appears",
+    "Scene does not advance until success"
+  ],
+  "selectorsToInspect": [
+    "[data-testid=\"error-banner\"]",
+    "[data-testid=\"scene-text\"]"
+  ],
+  "suggestedUiChanges": [
+    "If recovery feels harsh: soften error copy while staying precise about “scene did not move”.",
+    "If user retries blindly: add “Try again” guidance near submit-button."
+  ]
+}

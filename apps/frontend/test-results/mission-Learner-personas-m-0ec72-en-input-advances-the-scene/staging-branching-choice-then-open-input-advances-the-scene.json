@@ -1,0 +1,20 @@
+{
+  "persona": "Learner - Legal-first flow",
+  "testTitle": "branching choice then open-input advances the scene",
+  "status": "skipped",
+  "generatedAt": "2026-03-25T13:52:28.954Z",
+  "expectedUXChecks": [
+    "Branching choices visible",
+    "Open-input appears for the next node type",
+    "No error banner on a valid turn"
+  ],
+  "selectorsToInspect": [
+    "[data-testid^=\"choice-\"]",
+    "[data-testid=\"open-input\"]",
+    "[data-testid=\"error-banner\"]"
+  ],
+  "suggestedUiChanges": [
+    "If node transitions feel laggy: show stronger “processing” status and keep HUD stable.",
+    "If choice labels feel too similar: increase spacing/contrast and add subtle category tags."
+  ]
+}
