@@ -12,7 +12,7 @@
           - text: Level 1
         - generic [ref=e9]: $100
         - generic [ref=e10]: "0"
-      - generic [ref=e11]: 6:45 AM
+      - generic [ref=e11]: 8:11 AM
       - paragraph [ref=e12]: Your desk
     - generic [ref=e13]:
       - button "Alt+TTasks" [ref=e14] [cursor=pointer]
@@ -41,7 +41,7 @@
           - generic [ref=e36]:
             - paragraph [ref=e37]: We could not evaluate that turn.
             - paragraph [ref=e38]: "Session variant: Northbridge • contractor signal +14%"
-            - paragraph [ref=e39]: XP 20 · Foundations XP 10
+            - paragraph [ref=e39]: XP 28 · Foundations XP 14
             - paragraph [ref=e40]: Decision submit failed (HTTP 500)
           - generic [ref=e41]:
             - article [ref=e42]:

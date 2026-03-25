@@ -84,11 +84,18 @@ export class FirestorePersistence implements MissionPersistence {
       });
       return null;
     }
-    return parsed.data;
+    // Normalize numeric fields (especially against NaN/Infinity) so arithmetic & Firestore writes never crash.
+    return {
+      ...parsed.data,
+      profileMetrics: this.normalizeProfileMetrics(parsed.data.profileMetrics),
+    };
   }
 
   async upsertSession(record: SessionRecord): Promise<void> {
-    const payload = stripUndefinedDeep(record) as Record<string, unknown>;
+    const payload = stripUndefinedDeep({
+      ...record,
+      profileMetrics: this.normalizeProfileMetrics(record.profileMetrics),
+    }) as Record<string, unknown>;
     await tenantCollection(this.db, record.tenantId, 'sessions')
       .doc(record.sessionId)
       .set(payload, { merge: false });
