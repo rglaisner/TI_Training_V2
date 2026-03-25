@@ -3,6 +3,7 @@ import type { MissionEvent, MissionState, ProfileMetrics } from '@ti-training/sh
 import { ProfileMetricsSchema } from '@ti-training/shared';
 import type { MissionPersistence, SessionRecord } from './persistence';
 import { SessionRecordSchema } from './sessionRecordSchema';
+import { createDefaultProfileMetrics } from './domain';
 
 function cacheId(sessionId: string, nodeId: string, clientSubmissionId: string): string {
   return `${sessionId}__${nodeId}__${clientSubmissionId}`;
@@ -35,6 +36,38 @@ function tenantCollection(db: Firestore, tenantId: string, name: string) {
 
 export class FirestorePersistence implements MissionPersistence {
   constructor(private readonly db: Firestore) {}
+
+  /**
+   * Firestore may contain partial/corrupted profile documents.
+   * We must normalize before trusting the values for arithmetic / persistence.
+   */
+  private normalizeProfileMetrics(profile: ProfileMetrics): ProfileMetrics {
+    const defaults = createDefaultProfileMetrics();
+
+    const safeNumber = (n: unknown): number => {
+      return typeof n === 'number' && Number.isFinite(n) ? n : 0;
+    };
+
+    return {
+      ...defaults,
+      ...profile,
+      totalXP: safeNumber(profile.totalXP),
+      categoryScores: {
+        ...defaults.categoryScores,
+        ...profile.categoryScores,
+      },
+      categoryXP: {
+        ...defaults.categoryXP,
+        ...profile.categoryXP,
+      },
+      competencies: {
+        ...defaults.competencies,
+        ...profile.competencies,
+      },
+      labelsOfExcellence: Array.isArray(profile.labelsOfExcellence) ? profile.labelsOfExcellence : [],
+      activeCosmetics: Array.isArray(profile.activeCosmetics) ? profile.activeCosmetics : [],
+    };
+  }
 
   async getSession(tenantId: string, sessionId: string): Promise<SessionRecord | null> {
     const doc = await tenantCollection(this.db, tenantId, 'sessions').doc(sessionId).get();
@@ -77,7 +110,7 @@ export class FirestorePersistence implements MissionPersistence {
       });
       return null;
     }
-    return parsed.data;
+    return this.normalizeProfileMetrics(parsed.data);
   }
 
   async upsertProfile(
@@ -85,7 +118,8 @@ export class FirestorePersistence implements MissionPersistence {
     userId: string,
     profile: ProfileMetrics,
   ): Promise<void> {
-    await tenantCollection(this.db, tenantId, 'profiles').doc(userId).set(profile, {
+    const payload = stripUndefinedDeep(profile) as Record<string, unknown>;
+    await tenantCollection(this.db, tenantId, 'profiles').doc(userId).set(payload, {
       merge: true,
     });
   }

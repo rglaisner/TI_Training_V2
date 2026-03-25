@@ -2,7 +2,7 @@
   "persona": "Learner - Completion review",
   "testTitle": "terminal mission renders dossier section",
   "status": "skipped",
-  "generatedAt": "2026-03-25T11:37:06.921Z",
+  "generatedAt": "2026-03-25T11:44:32.807Z",
   "expectedUXChecks": [
     "Terminal dossier visible",
     "XP/competency summaries readable"

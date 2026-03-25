@@ -2,7 +2,7 @@
   "persona": "Learner - First entry",
   "testTitle": "starts mission from scenario selection",
   "status": "skipped",
-  "generatedAt": "2026-03-25T11:37:05.900Z",
+  "generatedAt": "2026-03-25T11:44:31.839Z",
   "expectedUXChecks": [
     "Scenario cards visible",
     "Click starts mission without refresh"
