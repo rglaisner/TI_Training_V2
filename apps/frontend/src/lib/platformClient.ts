@@ -86,6 +86,11 @@ async function parseError(response: Response, fallback: string): Promise<never> 
     // ignore; we'll log fallback without body
   }
 
+  const snippet = text
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 300);
+
   let payload: unknown = undefined;
   if (text.trim().length > 0) {
     try {
@@ -107,7 +112,9 @@ async function parseError(response: Response, fallback: string): Promise<never> 
     bodySnippet: text.slice(0, 500),
   });
 
-  throw new PlatformClientError(`${fallback} (HTTP ${status})`);
+  throw new PlatformClientError(
+    snippet.length > 0 ? `${fallback} (HTTP ${status}): ${snippet}` : `${fallback} (HTTP ${status})`,
+  );
 }
 
 export const PlatformClient = {

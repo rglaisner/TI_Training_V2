@@ -12,7 +12,7 @@
           - text: Level 1
         - generic [ref=e9]: $100
         - generic [ref=e10]: "0"
-      - generic [ref=e11]: 8:11 AM
+      - generic [ref=e11]: 8:31 AM
       - paragraph [ref=e12]: Your desk
     - generic [ref=e13]:
       - button "Alt+TTasks" [ref=e14] [cursor=pointer]
@@ -41,8 +41,8 @@
           - generic [ref=e36]:
             - paragraph [ref=e37]: We could not evaluate that turn.
             - paragraph [ref=e38]: "Session variant: Northbridge • contractor signal +14%"
-            - paragraph [ref=e39]: XP 28 · Foundations XP 14
-            - paragraph [ref=e40]: Decision submit failed (HTTP 500)
+            - paragraph [ref=e39]: XP 40 · Foundations XP 20
+            - paragraph [ref=e40]: "Decision submit failed (HTTP 500): {\"statusCode\":500,\"error\":\"Internal Server Error\",\"message\":\"Value for argument \\\"data\\\" is not a valid Firestore document. Cannot use \\\"undefined\\\" as a Firestore value (found in field \\\"missionState.currentNode.branchingOptions\\\"). If you want to ignore undefined values, enable `ignoreUndefinedPro"
           - generic [ref=e41]:
             - article [ref=e42]:
               - heading "Situation" [level=2] [ref=e43]

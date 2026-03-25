@@ -189,9 +189,10 @@ export class FirestorePersistence implements MissionPersistence {
     missionState: MissionState,
   ): Promise<void> {
     const id = cacheId(sessionId, nodeId, clientSubmissionId);
+    const payload = stripUndefinedDeep({ missionState }) as Record<string, unknown>;
     await tenantCollection(this.db, tenantId, 'decision_cache')
       .doc(id)
-      .set({ missionState }, { merge: false });
+      .set(payload, { merge: false });
   }
 
   async getCachedMentor(
@@ -216,8 +217,9 @@ export class FirestorePersistence implements MissionPersistence {
     missionState: MissionState,
   ): Promise<void> {
     const id = cacheId(sessionId, nodeId, clientSubmissionId);
+    const payload = stripUndefinedDeep({ missionState }) as Record<string, unknown>;
     await tenantCollection(this.db, tenantId, 'mentor_cache')
       .doc(id)
-      .set({ missionState }, { merge: false });
+      .set(payload, { merge: false });
   }
 }
