@@ -48,48 +48,57 @@ This file inventories what already exists in the repo versus what still needs to
   - XP track and cosmetics/perks influence on simulation behavior.
   - Specialty/observer badge narrative.
 
+## Already covered (operationalization)
+
+### Backend API contract + explicit mission state machine
+- `API_CONTRACTS_PLATFORMCLIENT.md`
+- `SESSION_AND_NODE_STATE_MACHINE.md`
+
+### Data governance: tenancy, RBAC, and event immutability enforcement
+- `TENANCY_AND_RBAC_MODEL.md`
+- `EVENTS_AUDIT_AND_IMMUTABILITY_PROTOCOL.md`
+
+### Agent architecture for parallel “dev leads” and runtime behavior
+- `AGENT_TEAM_TOPOLOGY_DEV.md`
+- `AGENT_WORK_SLICING_GUIDE.md`
+- `AGENT_RUNTIME_SPEC.md`
+- `INTERLOCUTOR_DEFINITION_AND_PROTOCOLS.md`
+
+### Voice streaming + voice-to-evaluation bridge contract
+- `VOICE_STREAMING_ARCHITECTURE.md`
+- `VOICE_TO_EVALUATION_BRIDGE_CONTRACT.md`
+
+Implementation note: you provided a reusable live-voice demo, `rglaisner/Talk_to_me_Live`. The planning docs should treat it as a reference implementation for *transport* (two-way audio streaming), not as the source of truth for *certification scoring*.
+
+### Admin capabilities + tracker
+- `ADMIN_DOMAIN_SPEC.md`
+- `TRACKER_USER_AND_ADMIN_SPEC.md`
+
+### Advanced V2 UX: landing, cinematic entry, dashboard, scenario selection, immersive designs
+- `V2_UX_CONTENT_SYSTEM.md`
+- `LANDING_AND_DASHBOARD_FLOWS.md`
+
+### Comprehensive testing protocol + evaluation contract validation
+- `TESTING_PROTOCOL_END_TO_END.md`
+- `EVALUATION_CONTRACT_VALIDATION_STRATEGY.md`
+
+### Observability / reliability / cost guardrails (LLM + streaming)
+- `OBSERVABILITY_AND_GUARDRAILS.md`
+
+### GTM, beta operations, and commercial packaging (program control)
+- `../../.agents/product-marketing-context.md` — positioning, ICP, objections, proof themes; fill verbatim quotes from customer calls.
+- `LIVE_TESTING_BETA_PROGRAM.md` — cohort criteria, funnel metrics, PMF surveys, interview script (aligned with observability hygiene).
+- `COMMERCIAL_ENTITLEMENTS_AND_UPGRADE_SURFACES.md` — tenant entitlements vs RBAC; dashboard/dossier upgrade surfaces without breaking backend-truth UX.
+- `CONTENT_STRATEGY_PILLARS_AND_EDITORIAL_CALENDAR.md` — five pillars, 12-week calendar, team buyer page spec.
+- `ROLLING_LAUNCH_CALENDAR.md` — ORB channels, mini-launches, email sequence outlines.
+
 ## Missing (needs new planning docs)
 
 ### Platform & deployment alignment
 - `PLATFORM_ARCHITECTURE_DECISIONS.md` (not currently present)
 - `INTEGRATIONS_CONNECTIVITY.md` (not currently present)
 
-### Backend API contract + explicit mission state machine
-- `API_CONTRACTS_PLATFORMCLIENT.md` (not currently present)
-- `SESSION_AND_NODE_STATE_MACHINE.md` (not currently present)
-
-### Data governance: tenancy, RBAC, and event immutability enforcement
-- `TENANCY_AND_RBAC_MODEL.md` (not currently present)
-- `EVENTS_AUDIT_AND_IMMUTABILITY_PROTOCOL.md` (not currently present)
-
-### Agent architecture for parallel “dev leads” and runtime behavior
-- `AGENT_TEAM_TOPOLOGY_DEV.md` (not currently present)
-- `AGENT_WORK_SLICING_GUIDE.md` (not currently present)
-- `AGENT_RUNTIME_SPEC.md` (not currently present)
-- `INTERLOCUTOR_DEFINITION_AND_PROTOCOLS.md` (not currently present)
-
-### Voice streaming + voice-to-evaluation bridge contract
-- `VOICE_STREAMING_ARCHITECTURE.md` (not currently present)
-- `VOICE_TO_EVALUATION_BRIDGE_CONTRACT.md` (not currently present)
-
-Implementation note: you provided a reusable live-voice demo, `rglaisner/Talk_to_me_Live`. The planning docs should treat it as a reference implementation for *transport* (two-way audio streaming), not as the source of truth for *certification scoring*.
-
-### Admin capabilities + tracker
-- `ADMIN_DOMAIN_SPEC.md` (not currently present)
-- `TRACKER_USER_AND_ADMIN_SPEC.md` (not currently present)
-
-### Advanced V2 UX: landing, cinematic entry, dashboard, scenario selection, immersive designs
-- `V2_UX_CONTENT_SYSTEM.md` (not currently present)
-- `LANDING_AND_DASHBOARD_FLOWS.md` (not currently present)
-
-### Comprehensive testing protocol + evaluation contract validation
-- `TESTING_PROTOCOL_END_TO_END.md` (not currently present)
-- `EVALUATION_CONTRACT_VALIDATION_STRATEGY.md` (not currently present)
-
-### Observability / reliability / cost guardrails (LLM + streaming)
-- `OBSERVABILITY_AND_GUARDRAILS.md` (not currently present)
-
 ## Summary
 
-You already have strong narrative and conceptual coverage for mission flow, LLM evaluation contract, and schemas. The missing work is mostly “operationalization”: explicit backend contracts/state machine, governance rules, voice transport bridging, admin/tracker requirements, and an end-to-end test + observability framework that lets multiple agent leads execute in parallel without ambiguity.
+You already have strong narrative and conceptual coverage for mission flow, LLM evaluation contract, and schemas, plus the operationalization docs for backend contracts/state machine, governance rules, voice transport bridging, admin/tracker requirements, advanced V2 UX flows, testing protocol, and observability guardrails. The only remaining “missing” items flagged by this inventory are `PLATFORM_ARCHITECTURE_DECISIONS.md` and `INTEGRATIONS_CONNECTIVITY.md`.
 
