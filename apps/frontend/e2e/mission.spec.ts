@@ -279,8 +279,22 @@ test.describe('Learner personas (mocked API)', () => {
 
   test('starts mission from scenario selection', async ({ page }) => {
   await page.goto('/');
-  await page.getByTestId('scenario-card').click();
+  await expect(page.getByTestId('environment-status-chip')).toBeVisible();
+  await page.getByTestId('scenario-card').first().click();
   await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
+  });
+
+  test('first-run orientation can be dismissed and persona targets are visible', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('first-run-orientation')).toBeVisible();
+  await expect(page.getByTestId('persona-target-line')).toHaveCount(3);
+  await page.getByTestId('orientation-continue').click();
+  await expect(page.getByTestId('first-run-orientation')).toHaveCount(0);
+  });
+
+  test('scenario list includes a second featured variant card', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('scenario-card')).toHaveCount(2);
   });
 
   test('branching choice then open-input advances the scene', async ({ page }) => {
@@ -298,7 +312,7 @@ test.describe('Learner personas (mocked API)', () => {
     });
   });
   await page.goto('/');
-  await page.getByTestId('scenario-card').click();
+  await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('choice-route_legal_first').click();
   await expect(page.getByTestId('scene-text')).toHaveText(
     'Legal replies: tighten your note before the CHRO readout.',
@@ -335,7 +349,7 @@ test.describe('Learner personas (mocked API)', () => {
     });
   });
   await page.goto('/');
-  await page.getByTestId('scenario-card').click();
+  await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('choice-route_legal_first').click();
   await page.getByTestId('open-input').fill('My answer');
   await page.getByTestId('submit-button').click();
@@ -357,7 +371,7 @@ test.describe('Learner personas (mocked API)', () => {
     });
   });
   await page.goto('/');
-  await page.getByTestId('scenario-card').click();
+  await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('mentor-button').click();
   await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
   await expect(page.getByTestId('mentor-hint-region')).toContainText('Mentor hint message');
@@ -398,7 +412,7 @@ test.describe('Learner personas (mocked API)', () => {
     });
   });
   await page.goto('/');
-  await page.getByTestId('scenario-card').click();
+  await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('choice-route_legal_first').click();
   await page.getByTestId('open-input').fill('terminal answer');
   await page.getByTestId('submit-button').click();
@@ -420,7 +434,7 @@ test.describe('Learner personas (mocked API)', () => {
     });
   });
   await page.goto('/');
-  await page.getByTestId('scenario-card').click();
+  await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('choice-route_legal_first').click();
   await expect(page.getByTestId('open-input')).toBeVisible();
   await expect(page.getByTestId('choice-route_legal_first')).toHaveCount(0);
@@ -474,7 +488,7 @@ test.describe('Learner personas (mocked API)', () => {
   });
 
   await page.goto('/');
-  await page.getByTestId('scenario-card').click();
+  await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('choice-route_legal_first').click();
 
   await expect(page.getByTestId('open-input')).toBeVisible();
@@ -583,12 +597,12 @@ test.describe('Learner personas (staging backend)', () => {
 
   test('start mission renders first node HUD', async ({ page }) => {
     await page.goto('/');
-    await page.getByTestId('scenario-card').click();
+    await page.getByTestId('scenario-card').first().click();
     await expect(page.getByTestId('scene-text')).toBeVisible({ timeout: 60_000 });
   });
 
   test('branching -> open input -> terminal dossier via real API', async ({ page }) => {
-    const scenarioCard = page.getByTestId('scenario-card');
+    const scenarioCard = page.getByTestId('scenario-card').first();
     const choiceLegalFirst = page.getByTestId('choice-route_legal_first');
     const openInput = page.getByTestId('open-input');
     const submitButton = page.getByTestId('submit-button');

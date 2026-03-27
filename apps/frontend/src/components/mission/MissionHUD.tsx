@@ -11,6 +11,7 @@ import { ToolsModule } from './modules/ToolsModule';
 export function MissionHUD() {
   const {
     missionState,
+    turnCount,
     statusMessage,
     errorMessage,
     openInputText,
@@ -46,10 +47,14 @@ export function MissionHUD() {
     : isBranchingNode
       ? 'Pick the route that you can defend under pressure.'
       : 'Submit a response with decision, evidence, and explicit boundary.';
+  const stepLabel = isTerminal ? 'Step 4 of 4 · Debrief' : `Step ${Math.min(Math.max(turnCount, 1), 3)} of 4 · Mission`;
 
   return (
     <div>
       <section data-testid="tools-region" className="mt-4 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-emerald-300/90" data-testid="mission-step-label">
+          {stepLabel}
+        </p>
         <p data-testid="status-text" className="text-sm text-zinc-300">
           {statusMessage}
         </p>

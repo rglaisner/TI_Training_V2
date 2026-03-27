@@ -1,9 +1,13 @@
 'use client';
 
 import type { MissionState } from '@ti-training/shared';
+import Link from 'next/link';
+import { useState } from 'react';
+import { trackFirstSessionEvent } from '@/lib/firstSessionTelemetry';
 
 export function TerminalModule({ missionState }: { missionState: MissionState }) {
   const { profileMetrics } = missionState;
+  const [mentorRated, setMentorRated] = useState(false);
 
   const categoryOrder = [
     'FOUNDATIONS',
@@ -36,6 +40,21 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
     .map(([competency, detail]) => ({ competency, ...detail }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 6);
+  const strongest = topCompetencies.slice(0, 2).map((entry) => entry.competency.replaceAll('_', ' '));
+  const weakest = topCompetencies.slice(-2).map((entry) => entry.competency.replaceAll('_', ' '));
+
+  const onMentorRated = (value: number): void => {
+    if (mentorRated) {
+      return;
+    }
+    setMentorRated(true);
+    trackFirstSessionEvent({
+      event: 'mentor_feedback_rated',
+      missionId: missionState.sessionId,
+      value,
+      detail: value > 0 ? 'helpful' : 'not_helpful',
+    });
+  };
 
   return (
     <article
@@ -46,6 +65,15 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
       <p className="mt-2 text-sm text-zinc-300">
         Run closed. Your route, open-text evaluations, and mentor touches are logged for review.
       </p>
+      <div className="mt-3 rounded-lg border border-emerald-900/30 bg-black/20 p-3">
+        <p className="text-sm font-medium text-emerald-100">Mission recap</p>
+        <p className="mt-1 text-xs text-zinc-300">
+          Strongest signals: {strongest.join(', ') || 'Foundations emerging'}.
+        </p>
+        <p className="mt-1 text-xs text-zinc-300">
+          Next improvement targets: {weakest.join(', ') || 'Consistency under pressure'}.
+        </p>
+      </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-emerald-900/30 bg-black/20 p-3">
           <div className="text-xs font-medium text-zinc-200">Certification summary</div>
@@ -120,6 +148,44 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
           No labels earned on this run yet. Your next missions can unlock them as your competency signals stabilize.
         </p>
       ) : null}
+      <div className="mt-4 rounded-lg border border-zinc-800 bg-black/20 p-3">
+        <p className="text-xs font-medium text-zinc-200">Was mentor guidance useful this run?</p>
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-emerald-700/60 bg-emerald-950/30 px-3 py-1 text-xs text-emerald-100 hover:bg-emerald-900/40 disabled:opacity-50"
+            onClick={() => onMentorRated(1)}
+            disabled={mentorRated}
+            data-testid="mentor-rating-helpful"
+          >
+            Helpful
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+            onClick={() => onMentorRated(0)}
+            disabled={mentorRated}
+            data-testid="mentor-rating-not-helpful"
+          >
+            Not helpful
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          href="/office/desk"
+          className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+          data-testid="next-mission-cta"
+        >
+          Start next mission now
+        </Link>
+        <Link
+          href="/tracker"
+          className="rounded-md border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-900/60"
+        >
+          Review tracker
+        </Link>
+      </div>
     </article>
   );
 }

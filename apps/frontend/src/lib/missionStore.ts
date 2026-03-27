@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import type { DecisionRequest, DecisionResponse, MissionState } from '@ti-training/shared';
 import { PlatformClient, PlatformClientError } from './platformClient';
+import { trackFirstSessionEvent } from './firstSessionTelemetry';
 
 export type SocialMessageSource = 'npc' | 'mentor';
 
@@ -14,9 +15,13 @@ export interface SocialQueueItem {
 
 const initialStatusMessage =
   'Start the scenario to enter a 3-way stance choice, then two open-text beats (including one surprise pressure line). Mentor is optional.';
+const scenarioStartAlias: Record<string, string> = {
+  'scenario-1-exec-shock': 'scenario-1',
+};
 
 interface MissionStore {
   missionState: MissionState | null;
+  turnCount: number;
   statusMessage: string;
   errorMessage: string;
   openInputText: string;
@@ -77,6 +82,7 @@ function mentorChallengeText(state: MissionStore): string {
 
 export const useMissionStore = create<MissionStore>((set, get) => ({
   missionState: null,
+  turnCount: 0,
   statusMessage: initialStatusMessage,
   errorMessage: '',
   openInputText: '',
@@ -91,6 +97,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   resetMission: () =>
     set({
       missionState: null,
+      turnCount: 0,
       statusMessage: initialStatusMessage,
       errorMessage: '',
       openInputText: '',
@@ -118,9 +125,12 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       socialQueue: [],
     });
     try {
-      const missionState = await PlatformClient.startMission({ scenarioId });
+      const normalizedScenarioId = scenarioStartAlias[scenarioId] ?? scenarioId;
+      const missionState = await PlatformClient.startMission({ scenarioId: normalizedScenarioId });
+      trackFirstSessionEvent({ event: 'next_mission_selected', missionId: scenarioId });
       set({
         missionState,
+        turnCount: 1,
         isSubmitting: false,
         statusMessage: 'Scenario live. Choose your first move.',
       });
@@ -197,6 +207,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
         : state.socialQueue;
       set({
         missionState: payload.missionState,
+        turnCount: state.turnCount + 1,
         openInputText: '',
         voiceEnabled: false,
         voicePartialTranscriptText: '',
@@ -209,6 +220,9 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
           ? 'Scenario complete.'
           : 'Decision accepted.',
       });
+      if (payload.missionState.isTerminal) {
+        trackFirstSessionEvent({ event: 'mission_completed', missionId: state.missionState.sessionId });
+      }
     } catch (error) {
       set({
         isSubmitting: false,
@@ -244,6 +258,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
         : state.socialQueue;
       set({
         missionState: payload.missionState,
+        turnCount: state.turnCount + 1,
         lastNpcMessage: npc,
         socialQueue: nextSocialQueue,
         voiceEnabled: false,
@@ -254,6 +269,9 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
           ? 'Scenario complete.'
           : 'Decision accepted.',
       });
+      if (payload.missionState.isTerminal) {
+        trackFirstSessionEvent({ event: 'mission_completed', missionId: state.missionState.sessionId });
+      }
     } catch (error) {
       set({
         isSubmitting: false,
@@ -269,6 +287,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     }
     set({ isSubmitting: true, statusMessage: 'Evaluation running…', errorMessage: '' });
     try {
+      trackFirstSessionEvent({ event: 'mentor_invoked', missionId: state.missionState.sessionId });
       const response = await PlatformClient.invokeMentor({
         sessionId: state.missionState.sessionId,
         nodeId: state.missionState.currentNode.nodeId,

@@ -2,6 +2,7 @@
 
 import { FirebaseError } from 'firebase/app';
 import { useState } from 'react';
+import Link from 'next/link';
 import { useFirebaseAuthContext } from '../lib/FirebaseAuthContext';
 
 function signInErrorMessage(error: unknown): string {
@@ -79,6 +80,22 @@ export default function FirebaseAuthPanel() {
           Local fix: copy values into <code className="rounded bg-red-950/80 px-1">apps/frontend/.env.local</code>. See{' '}
           <code className="rounded bg-red-950/80 px-1">docs/deployment.md</code>.
         </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded border border-red-700/70 bg-red-950/40 px-3 py-1.5 text-xs text-red-100 hover:bg-red-900/40"
+            onClick={() => window.location.reload()}
+            data-testid="auth-retry-setup"
+          >
+            Retry setup check
+          </button>
+          <Link
+            href="/office/hub"
+            className="rounded border border-zinc-700 bg-zinc-900/60 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800/60"
+          >
+            Continue to office hub
+          </Link>
+        </div>
       </section>
     );
   }
@@ -96,6 +113,10 @@ export default function FirebaseAuthPanel() {
           NEXT_PUBLIC_USE_TEST_AUTH is on — the API uses test headers, not Firebase. Turn it off for real
           Firebase sign-in.
         </p>
+        <div className="mt-3 flex gap-2 text-xs text-amber-100/90">
+          <span className="rounded bg-amber-900/30 px-2 py-1">Safe for demos</span>
+          <span className="rounded bg-amber-900/30 px-2 py-1">Not production identity</span>
+        </div>
       </section>
     );
   }
