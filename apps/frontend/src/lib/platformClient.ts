@@ -10,6 +10,9 @@ import type {
   MentorFeedbackResponse,
   MentorResponse,
   MissionState,
+  ScenarioRolloutGetResponse,
+  ScenarioRolloutSaveRequest,
+  ScenarioRolloutSaveResponse,
   StartMissionRequest,
   TrackerSummaryResponse,
 } from '@ti-training/shared';
@@ -20,6 +23,9 @@ import {
   FirstSessionTelemetryIngestResponseSchema,
   MentorFeedbackResponseSchema,
   MentorResponseSchema,
+  ScenarioRolloutGetResponseSchema,
+  ScenarioRolloutSaveRequestSchema,
+  ScenarioRolloutSaveResponseSchema,
   StartMissionResponseSchema,
   TrackerSummaryResponseSchema,
 } from '@ti-training/shared';
@@ -296,6 +302,55 @@ export const PlatformClient = {
       return parseError(response, 'Admin events export failed');
     }
     return response.text();
+  },
+
+  async getScenarioRollout(): Promise<ScenarioRolloutGetResponse> {
+    const response = await fetch(`${apiBaseUrl}/api/admin/scenario-rollout`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+    });
+    if (!response.ok) {
+      return parseError(response, 'Scenario rollout fetch failed');
+    }
+    const raw = await safeJson(response);
+    const parsed = ScenarioRolloutGetResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error({
+        event: 'SCENARIO_ROLLOUT_GET_VALIDATION_FAILED',
+        issues: parsed.error.issues,
+      });
+      throw new PlatformClientError('Scenario rollout response failed validation.');
+    }
+    return parsed.data;
+  },
+
+  async saveScenarioRollout(requestBody: ScenarioRolloutSaveRequest): Promise<ScenarioRolloutSaveResponse> {
+    const parsedBody = ScenarioRolloutSaveRequestSchema.safeParse(requestBody);
+    if (!parsedBody.success) {
+      console.error({
+        event: 'SCENARIO_ROLLOUT_SAVE_REQUEST_INVALID',
+        issues: parsedBody.error.issues,
+      });
+      throw new PlatformClientError('Scenario rollout save request failed validation.');
+    }
+    const response = await fetch(`${apiBaseUrl}/api/admin/scenario-rollout`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify(parsedBody.data),
+    });
+    if (!response.ok) {
+      return parseError(response, 'Scenario rollout save failed');
+    }
+    const raw = await safeJson(response);
+    const parsed = ScenarioRolloutSaveResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error({
+        event: 'SCENARIO_ROLLOUT_SAVE_RESPONSE_INVALID',
+        issues: parsed.error.issues,
+      });
+      throw new PlatformClientError('Scenario rollout save response failed validation.');
+    }
+    return parsed.data;
   },
 };
 

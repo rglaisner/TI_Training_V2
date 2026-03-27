@@ -70,6 +70,11 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
       </p>
       <div className="mt-3 rounded-lg border border-emerald-900/30 bg-black/20 p-3">
         <p className="text-sm font-medium text-emerald-100">Mission recap</p>
+        {missionState.runMetadata ? (
+          <p className="mt-1 text-xs text-amber-100/90" data-testid="terminal-run-variant">
+            Run context: {missionState.runMetadata.variantLabel}
+          </p>
+        ) : null}
         <p className="mt-1 text-xs text-zinc-300">
           Strongest signals: {strongest.join(', ') || 'Foundations emerging'}.
         </p>

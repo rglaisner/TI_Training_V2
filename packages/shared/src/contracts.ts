@@ -645,6 +645,33 @@ export const TrackerSummaryResponseSchema = z.object({
 
 export type TrackerSummaryResponse = z.infer<typeof TrackerSummaryResponseSchema>;
 
+/** Entry for tenant scenario rollout / catalog controls (admin). */
+export const ScenarioRolloutEntrySchema = z.object({
+  enabled: z.boolean(),
+  featured: z.boolean().optional(),
+  pushRank: z.number().int().optional(),
+});
+
+export type ScenarioRolloutEntry = z.infer<typeof ScenarioRolloutEntrySchema>;
+
+export const ScenarioRolloutGetResponseSchema = z.object({
+  config: z.record(z.string(), ScenarioRolloutEntrySchema),
+});
+
+export type ScenarioRolloutGetResponse = z.infer<typeof ScenarioRolloutGetResponseSchema>;
+
+export const ScenarioRolloutSaveResponseSchema = z.object({
+  ok: z.literal(true),
+});
+
+export type ScenarioRolloutSaveResponse = z.infer<typeof ScenarioRolloutSaveResponseSchema>;
+
+export const ScenarioRolloutSaveRequestSchema = z.object({
+  config: z.record(z.string(), ScenarioRolloutEntrySchema),
+});
+
+export type ScenarioRolloutSaveRequest = z.infer<typeof ScenarioRolloutSaveRequestSchema>;
+
 export function normalizeScoreTo100(rawScore: number): {
   awardedScore: number;
   rawScale: 'zero_to_one' | 'zero_to_one_hundred';

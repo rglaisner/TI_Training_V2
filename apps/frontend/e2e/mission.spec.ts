@@ -284,10 +284,10 @@ test.describe('Learner personas (mocked API)', () => {
   await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
   });
 
-  test('first-run orientation can be dismissed and persona targets are visible', async ({ page }) => {
+  test('first-run orientation can be dismissed and session outcome lines are visible', async ({ page }) => {
   await page.goto('/office/desk');
   await expect(page.getByTestId('first-run-orientation')).toBeVisible();
-  await expect(page.getByTestId('persona-target-line')).toHaveCount(3);
+  await expect(page.getByTestId('first-session-outcome-line')).toHaveCount(3);
   await page.getByTestId('orientation-continue').click();
   await expect(page.getByTestId('first-run-orientation')).toHaveCount(0);
   });

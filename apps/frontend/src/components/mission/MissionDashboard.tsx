@@ -64,10 +64,11 @@ const SCENARIO_PRESENTATION: Record<string, ScenarioPresentationMeta> = {
   },
 };
 
-const PERSONA_TARGETS = [
-  { persona: 'Junior TI Pro', target: '>= 4.6/5 delight + smooth onboarding' },
-  { persona: 'TI Expert Reviewer', target: '>= 4.5/5 realism + clear scoring rationale' },
-  { persona: 'UI/Game Designer', target: '>= 4.6/5 first-session polish and pacing' },
+/** Learner-facing outcomes (avoid internal QA score targets in prod UI). */
+const FIRST_SESSION_OUTCOMES = [
+  'You will practice executive-ready framing under time pressure.',
+  'You will get immediate scored feedback on open-text moves.',
+  'You will leave with a dossier you can compare on the next run.',
 ] as const;
 
 export default function MissionDashboard() {
@@ -269,10 +270,10 @@ export default function MissionDashboard() {
             <li>Respond with evidence and explicit boundaries.</li>
             <li>Review your dossier and next-step targets.</li>
           </ol>
-          <ul className="mt-3 space-y-1 text-xs text-zinc-200">
-            {PERSONA_TARGETS.map((item) => (
-              <li key={item.persona} data-testid="persona-target-line">
-                {item.persona}: {item.target}
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-zinc-200">
+            {FIRST_SESSION_OUTCOMES.map((line) => (
+              <li key={line} data-testid="first-session-outcome-line">
+                {line}
               </li>
             ))}
           </ul>

@@ -1,8 +1,8 @@
 {
   "persona": "Learner - Unknown persona",
-  "testTitle": "first-run orientation can be dismissed and persona targets are visible",
+  "testTitle": "first-run orientation can be dismissed and session outcome lines are visible",
   "status": "passed",
-  "generatedAt": "2026-03-27T16:21:18.024Z",
+  "generatedAt": "2026-03-27T17:50:26.841Z",
   "expectedUXChecks": [],
   "selectorsToInspect": [],
   "suggestedUiChanges": []

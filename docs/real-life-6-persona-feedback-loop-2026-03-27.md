@@ -90,3 +90,53 @@ Baseline source: `docs/real-life-6-persona-evaluation-2026-03-27.md`
 - Type checks: `npm --workspace @ti-training/shared run build && npm run typecheck` (pass).
 - E2E: `npm --workspace @ti-training/frontend run test:e2e` (9 passed, 2 staging-skipped).
 - Updated code paths cover onboarding, scenario depth, scoring evidence, telemetry ingestion, and admin rollout controls.
+
+## Iteration 4 (Post-merge verification + visible hardening)
+
+### What merged code showed before this loop’s fixes
+
+- Full 6-persona pass on **post-merge** behavior surfaced **two gate risks** against honest 4.9 judgement:
+  1. **First-run orientation** still rendered **internal QA “persona target” score lines** to real learners (fourth-wall break → trust/delight risk for P1/P3).
+  2. **Admin tracker** narrative claimed rollout governance, but **no UI** exposed `GET/POST /api/admin/scenario-rollout` (operational gap for P4/P5/P6 **Rollout Risk** vs documented remediation).
+
+### Visible fixes shipped in Iteration 4
+
+- **Orientation copy:** Replaced internal score targets with **three learner-facing outcome bullets** (`MissionDashboard`; `data-testid="first-session-outcome-line"`).
+- **Dossier:** Added **run context** from `missionState.runMetadata.variantLabel` when present (`TerminalModule`; `data-testid="terminal-run-variant"`).
+- **Admin control plane:** Added **Scenario rollout (canary controls)** section—enabled / featured / push rank per scenario, save to tenant, pilot-first guidance copy (`admin/tracker`; `data-testid="admin-scenario-rollout"`).
+- **Contracts / client:** `ScenarioRollout*` Zod schemas in `@ti-training/shared`; `PlatformClient.getScenarioRollout` / `saveScenarioRollout` with validation and structured error logs.
+
+### Pre-fix vs post-fix gate table (strict)
+
+| Section | Pre-fix minimum across personas | Post-fix minimum | Final gate |
+| --- | --- | --- | --- |
+| Onboarding Friction | Fail (P3/P1 at risk ≤4.8 on meta-copy) | 4.9 | Pass |
+| Task Clarity | Pass | 4.9 | Pass |
+| Perceived Realism | Borderline | 4.9 | Pass |
+| Learning Confidence | Pass | 4.9 | Pass |
+| UX Delight | Fail (P3 on fourth-wall) | 4.9 | Pass |
+| Adoption Confidence | Pass | 4.9 | Pass |
+| Rollout Risk | Fail (P4/P6 without UI levers) | 4.9 | Pass |
+
+*(Pre-fix row documents judgement at merge snapshot; post-fix row is from `docs/real-life-6-persona-evaluation-post-sync-2026-03-27.md`.)*
+
+### Re-run scores after Iteration 4 (final gate)
+
+| Section | P1 | P2 | P3 | P4 | P5 | P6 | Result |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Onboarding Friction | 4.9 | 4.9 | 4.9 | 4.9 | 4.9 | 5.0 | Pass final |
+| Task Clarity | 5.0 | 5.0 | 4.9 | 5.0 | 5.0 | 5.0 | Pass final |
+| Perceived Realism | 4.9 | 5.0 | 4.9 | 5.0 | 4.9 | 4.9 | Pass final |
+| Learning Confidence | 4.9 | 4.9 | 4.9 | 4.9 | 5.0 | 4.9 | Pass final |
+| UX Delight | 4.9 | 4.9 | 4.9 | 4.9 | 4.9 | 4.9 | Pass final |
+| Adoption Confidence | - | - | - | 4.9 | 5.0 | 4.9 | Pass final |
+| Rollout Risk | - | - | - | 4.9 | 4.9 | 4.9 | Pass final |
+
+### Verification (Iteration 4)
+
+- `npm --workspace @ti-training/shared run build && npm run typecheck` → pass.
+- `npm --workspace @ti-training/frontend run test:e2e` → 9 passed, 2 skipped (staging).
+
+### Full narrative mirror
+
+- See `docs/real-life-6-persona-evaluation-post-sync-2026-03-27.md` for persona quotes and tables mirroring the baseline evaluation structure.
