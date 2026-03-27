@@ -12,15 +12,15 @@
 1. App opens at `/` and immediately redirects to `/office/desk`.
 2. User lands directly in an office-themed mission surface (`TIC Trainer V2`), not a classic public onboarding funnel.
 3. Authentication panel appears with one of three states:
-   - Build misconfigured: strong red Firebase setup blocker panel.
-   - Test-bypass mode enabled: amber warning panel.
-   - Proper setup: Firebase email/password sign-in form.
+  - Build misconfigured: strong red Firebase setup blocker panel.
+  - Test-bypass mode enabled: amber warning panel.
+  - Proper setup: Firebase email/password sign-in form.
 4. After auth, scenario list loads from API; if unavailable, user still sees fallback scenario card.
 5. User starts scenario and enters mission HUD:
-   - branching decision
-   - open-input response nodes
-   - mentor hint option
-   - final terminal dossier with XP/competency output
+  - branching decision
+  - open-input response nodes
+  - mentor hint option
+  - final terminal dossier with XP/competency output
 6. User can then check tracker/experience routes for progress signals.
 
 ## Persona 1: Junior TI Pro (Gen Z, high UX expectations)
@@ -35,13 +35,15 @@
 
 ### Persona Score (1-5)
 
-| Dimension | Score | Why |
-| --- | --- | --- |
-| Onboarding Friction | 2.5 | Setup dependency is unforgiving for true first-time users. |
-| Task Clarity | 4.2 | Mission path and calls-to-action are straightforward. |
-| Perceived Realism | 3.8 | Corporate pressure context feels credible. |
-| Learning Confidence | 3.9 | Feedback loop is visible and actionable. |
-| UX Delight | 3.6 | Solid baseline polish, but not yet standout consumer-grade magic. |
+
+| Dimension           | Score | Why                                                               |
+| ------------------- | ----- | ----------------------------------------------------------------- |
+| Onboarding Friction | 2.5   | Setup dependency is unforgiving for true first-time users.        |
+| Task Clarity        | 4.2   | Mission path and calls-to-action are straightforward.             |
+| Perceived Realism   | 3.8   | Corporate pressure context feels credible.                        |
+| Learning Confidence | 3.9   | Feedback loop is visible and actionable.                          |
+| UX Delight          | 3.6   | Solid baseline polish, but not yet standout consumer-grade magic. |
+
 
 ### Return Tomorrow?
 
@@ -59,13 +61,15 @@
 
 ### Persona Score (1-5)
 
-| Dimension | Score | Why |
-| --- | --- | --- |
-| Onboarding Friction | 3.4 | Acceptable for pilot users, not frictionless. |
-| Task Clarity | 4.3 | Prompts and expected outputs are clear and role-relevant. |
-| Perceived Realism | 4.0 | Strong pressure dynamics; limited scenario breadth. |
-| Learning Confidence | 3.7 | Measurable signals exist, but psychometric proof is not yet shown. |
-| UX Delight | 3.3 | Functional and credible, less emphasis on emotional polish. |
+
+| Dimension           | Score | Why                                                                |
+| ------------------- | ----- | ------------------------------------------------------------------ |
+| Onboarding Friction | 3.4   | Acceptable for pilot users, not frictionless.                      |
+| Task Clarity        | 4.3   | Prompts and expected outputs are clear and role-relevant.          |
+| Perceived Realism   | 4.0   | Strong pressure dynamics; limited scenario breadth.                |
+| Learning Confidence | 3.7   | Measurable signals exist, but psychometric proof is not yet shown. |
+| UX Delight          | 3.3   | Functional and credible, less emphasis on emotional polish.        |
+
 
 ### Return Tomorrow?
 
@@ -83,13 +87,15 @@
 
 ### Persona Score (1-5)
 
-| Dimension | Score | Why |
-| --- | --- | --- |
-| Onboarding Friction | 2.8 | Auth/setup branch can fail before trust is earned. |
-| Task Clarity | 4.1 | Mission progression is legible and stateful. |
-| Perceived Realism | 3.5 | Feels like a simulation tool, not a game-grade immersive product. |
-| Learning Confidence | 3.4 | Outcome surfaces exist, but depth and pacing could improve. |
-| UX Delight | 3.2 | Coherent, but lacks premium onboarding choreography and richer micro-moments. |
+
+| Dimension           | Score | Why                                                                           |
+| ------------------- | ----- | ----------------------------------------------------------------------------- |
+| Onboarding Friction | 2.8   | Auth/setup branch can fail before trust is earned.                            |
+| Task Clarity        | 4.1   | Mission progression is legible and stateful.                                  |
+| Perceived Realism   | 3.5   | Feels like a simulation tool, not a game-grade immersive product.             |
+| Learning Confidence | 3.4   | Outcome surfaces exist, but depth and pacing could improve.                   |
+| UX Delight          | 3.2   | Coherent, but lacks premium onboarding choreography and richer micro-moments. |
+
 
 ### Return Tomorrow?
 
@@ -103,16 +109,16 @@
 
 ## Top Blockers (Severity x Impact)
 
-1. **First-session setup/auth fragility**  
-   Missing/misaligned Firebase or API wiring can block value before the first mission.
-2. **Limited content breadth**  
-   One primary scenario constrains replay value and perceived learning progression.
-3. **Shallow adaptation depth**  
-   Seed variation and partial branching are helpful but not yet true learner-state adaptation.
-4. **Mentor quality proof gap**  
-   Good behavior constraints exist, but external evidence of mentoring effectiveness is limited.
-5. **UX confidence gaps for premium expectations**  
-   Accessibility/responsive/visual quality are decent, but not comprehensively validated in automated quality gates.
+1. **First-session setup/auth fragility**
+  Missing/misaligned Firebase or API wiring can block value before the first mission.
+2. **Limited content breadth**
+  One primary scenario constrains replay value and perceived learning progression.
+3. **Shallow adaptation depth**
+  Seed variation and partial branching are helpful but not yet true learner-state adaptation.
+4. **Mentor quality proof gap**
+  Good behavior constraints exist, but external evidence of mentoring effectiveness is limited.
+5. **UX confidence gaps for premium expectations**
+  Accessibility/responsive/visual quality are decent, but not comprehensively validated in automated quality gates.
 
 ## Fast Wins (1-2 days)
 
@@ -138,3 +144,4 @@
 
 - **Confidence: medium-high** for behavior and flow accuracy based on code paths and QA evidence.
 - **Unknowns:** live production env health, real-user emotional response variance, and long-run learning retention impact.
+
