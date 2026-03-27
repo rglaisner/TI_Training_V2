@@ -612,9 +612,11 @@ test.describe('Learner personas (staging backend)', () => {
       await openInput.fill('Staging answer 1');
       await submitButton.click();
       await expect(openInput).toBeVisible({ timeout: 60_000 });
+      await expect(openInput).toBeEditable({ timeout: 60_000 });
 
       // Open-input beat 2 -> terminal dossier.
       await openInput.fill('Staging answer 2');
+      await expect(submitButton).toBeEnabled({ timeout: 60_000 });
       await submitButton.click();
 
       try {
