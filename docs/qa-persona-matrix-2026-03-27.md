@@ -8,29 +8,31 @@
 ## Runs Executed
 
 1. Mocked run:
-   - Command: `npm --workspace @ti-training/frontend run test:e2e`
-   - Result: `7 passed`, `2 skipped`, `0 failed`
+  - Command: `npm --workspace @ti-training/frontend run test:e2e`
+  - Result: `7 passed`, `2 skipped`, `0 failed`
 2. Staging run (without explicit API base URL):
-   - Command: `$env:E2E_TARGET='staging'; npm --workspace @ti-training/frontend run test:e2e`
-   - Result: `0 passed`, `7 skipped`, `2 failed`
-   - Failure pattern: UI did not reach expected staged selectors (`scene-text`, `choice-route_legal_first`) because backend base URL was not explicitly wired for this run.
+  - Command: `$env:E2E_TARGET='staging'; npm --workspace @ti-training/frontend run test:e2e`
+  - Result: `0 passed`, `7 skipped`, `2 failed`
+  - Failure pattern: UI did not reach expected staged selectors (`scene-text`, `choice-route_legal_first`) because backend base URL was not explicitly wired for this run.
 3. Staging run (with explicit Render API base URL):
-   - Command: `$env:E2E_TARGET='staging'; $env:E2E_API_BASE_URL='https://ti-training-api.onrender.com'; npm --workspace @ti-training/frontend run test:e2e`
-   - Result: `2 passed`, `7 skipped`, `0 failed`
+  - Command: `$env:E2E_TARGET='staging'; $env:E2E_API_BASE_URL='https://ti-training-api.onrender.com'; npm --workspace @ti-training/frontend run test:e2e`
+  - Result: `2 passed`, `7 skipped`, `0 failed`
 
 ## Pass/Skip/Fail Matrix
 
-| Persona test | Mocked | Staging (no API URL) | Staging (Render API URL) | Notes |
-| --- | --- | --- | --- | --- |
-| starts mission from scenario selection | PASS | SKIP | SKIP | Mocked-only test by design |
-| branching choice then open-input advances the scene | PASS | SKIP | SKIP | Mocked-only test by design |
-| invalid evaluation contract shows retry-safe error and no advance on open input | PASS | SKIP | SKIP | Mocked-only negative-path contract test |
-| mentor invocation does not advance node | PASS | SKIP | SKIP | Mocked-only mentor control test |
-| terminal mission renders dossier section | PASS | SKIP | SKIP | Mocked-only terminal rendering test |
-| after branching, open-input step shows textarea not branching buttons | PASS | SKIP | SKIP | Mocked-only node-type gating test |
-| voice transcript mode requires confirmation before scoring | PASS | SKIP | SKIP | Mocked-only voice transcript gating test |
-| start mission renders first node HUD (staging backend) | SKIP | FAIL | PASS | Fails without explicit staging API base URL; passes with Render URL |
-| branching -> open input -> terminal dossier via real API | SKIP | FAIL | PASS | Same root cause as above; passes with Render URL |
+
+| Persona test                                                                    | Mocked | Staging (no API URL) | Staging (Render API URL) | Notes                                                               |
+| ------------------------------------------------------------------------------- | ------ | -------------------- | ------------------------ | ------------------------------------------------------------------- |
+| starts mission from scenario selection                                          | PASS   | SKIP                 | SKIP                     | Mocked-only test by design                                          |
+| branching choice then open-input advances the scene                             | PASS   | SKIP                 | SKIP                     | Mocked-only test by design                                          |
+| invalid evaluation contract shows retry-safe error and no advance on open input | PASS   | SKIP                 | SKIP                     | Mocked-only negative-path contract test                             |
+| mentor invocation does not advance node                                         | PASS   | SKIP                 | SKIP                     | Mocked-only mentor control test                                     |
+| terminal mission renders dossier section                                        | PASS   | SKIP                 | SKIP                     | Mocked-only terminal rendering test                                 |
+| after branching, open-input step shows textarea not branching buttons           | PASS   | SKIP                 | SKIP                     | Mocked-only node-type gating test                                   |
+| voice transcript mode requires confirmation before scoring                      | PASS   | SKIP                 | SKIP                     | Mocked-only voice transcript gating test                            |
+| start mission renders first node HUD (staging backend)                          | SKIP   | FAIL                 | PASS                     | Fails without explicit staging API base URL; passes with Render URL |
+| branching -> open input -> terminal dossier via real API                        | SKIP   | FAIL                 | PASS                     | Same root cause as above; passes with Render URL                    |
+
 
 ## Artifacts
 

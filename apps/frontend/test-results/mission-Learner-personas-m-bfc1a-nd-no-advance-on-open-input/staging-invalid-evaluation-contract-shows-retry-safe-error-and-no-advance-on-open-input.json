@@ -2,7 +2,7 @@
   "persona": "Learner - Retry after scoring failure",
   "testTitle": "invalid evaluation contract shows retry-safe error and no advance on open input",
   "status": "skipped",
-  "generatedAt": "2026-03-27T07:44:53.932Z",
+  "generatedAt": "2026-03-27T08:28:50.500Z",
   "expectedUXChecks": [
     "Error banner appears",
     "Scene does not advance until success"
