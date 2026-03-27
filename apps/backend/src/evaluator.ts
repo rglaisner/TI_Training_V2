@@ -1,6 +1,7 @@
 import {
   EvaluationJsonSchema,
   normalizeScoreTo100,
+  type EvaluationRubricBreakdown,
   type TICompetency,
 } from '@ti-training/shared';
 
@@ -20,6 +21,9 @@ export interface EvaluationResult {
   rawScale: 'zero_to_one' | 'zero_to_one_hundred';
   demonstrated: boolean;
   feedbackText: string;
+  rubricBreakdown?: EvaluationRubricBreakdown;
+  evaluationConfidence?: number;
+  scoringRationaleVersion?: string;
 }
 
 export interface EvaluationEngine {
@@ -46,6 +50,9 @@ export class DeterministicEvaluationEngine implements EvaluationEngine {
       rawScale: normalized.rawScale,
       demonstrated: validation.data.Demonstrated,
       feedbackText: validation.data.Feedback,
+      rubricBreakdown: scored.rubricBreakdown,
+      evaluationConfidence: scored.confidence,
+      scoringRationaleVersion: 'deterministic-v3',
     };
   }
 }
@@ -75,6 +82,8 @@ export class TemplateMentorHintGenerator implements MentorHintGenerator {
 interface DeterministicScoreBreakdown {
   score: number;
   feedback: string;
+  rubricBreakdown: EvaluationRubricBreakdown;
+  confidence: number;
 }
 
 function normalizeText(value: string): string {
@@ -107,6 +116,14 @@ function scoreOpenInputAgainstRubric(input: OpenInputEvaluationRequest): Determi
       score: 0.05,
       feedback:
         'No decision text was provided. State a concrete recommendation, one evidence point, and one explicit boundary.',
+      rubricBreakdown: {
+        decisionClarity: 0,
+        evidenceDiscipline: 0,
+        boundaryExplicitness: 0,
+        stakeholderActionability: 0,
+        rubricAlignment: 0,
+      },
+      confidence: 0.2,
     };
   }
 
@@ -183,7 +200,18 @@ function scoreOpenInputAgainstRubric(input: OpenInputEvaluationRequest): Determi
       ? `Solid ${input.targetCompetency} signal: recommendation, evidence, and boundaries are all explicit.`
       : `Strengthen ${input.targetCompetency} by adding: ${missing.join(', ')}.`;
 
-  return { score, feedback };
+  return {
+    score,
+    feedback,
+    rubricBreakdown: {
+      decisionClarity,
+      evidenceDiscipline: evidencePresence,
+      boundaryExplicitness: boundaryRisk,
+      stakeholderActionability: stakeholderAction,
+      rubricAlignment,
+    },
+    confidence: 0.74,
+  };
 }
 
 interface MentorContext {

@@ -19,6 +19,14 @@ function evidenceHeadline(event: MissionEvent): string {
       return `Rejected · ${event.scenarioId}`;
     case 'MENTOR_INVOKED':
       return `Mentor · ${event.scenarioId}`;
+    case 'MENTOR_FEEDBACK_RECORDED':
+      return `Mentor feedback · ${event.scenarioId} · ${event.helpful ? 'helpful' : 'not helpful'}`;
+    case 'BASELINE_CAPTURED':
+      return `Baseline captured · ${event.scenarioId}`;
+    case 'MISSION_COMPLETED':
+      return `Mission completed · ${event.scenarioId} · xp delta ${event.xpDelta}`;
+    case 'TELEMETRY_INGESTED':
+      return `Telemetry ingested · ${event.detail}`;
     case 'VOICE_TURN_EVALUATED':
       return `Voice turn · ${event.scenarioId}`;
     case 'ADMIN_CONFIG_CHANGED':

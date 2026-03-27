@@ -1,8 +1,8 @@
 {
   "persona": "Learner - Unknown persona",
   "testTitle": "start mission renders first node HUD",
-  "status": "passed",
-  "generatedAt": "2026-03-27T08:28:54.811Z",
+  "status": "skipped",
+  "generatedAt": "2026-03-27T16:21:28.123Z",
   "expectedUXChecks": [],
   "selectorsToInspect": [],
   "suggestedUiChanges": []

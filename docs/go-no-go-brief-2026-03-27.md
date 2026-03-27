@@ -1,53 +1,35 @@
-# Go / No-Go Brief (2026-03-27)
+# Go / No-Go Brief (2026-03-27, Bridge-to-Perfect)
 
 ## Decision
 
-- **GO (quality gates passed)**
+- **GO (final strict gate met)**
 
 ## Why this is go
 
-- Objective gate scorecard now passes all gates, including both critical gates.
-- Evaluation fallback no longer relies on text length; it now scores rubric-relevant dimensions with actionable feedback.
-- Mentor guidance now uses scene/challenge/user context and returns concise actionable steps.
+- The feedback loop reached the strict rule: every scored section reached `>=4.9/5` in the final six-persona rerun.
+- Core gaps from the baseline were materially addressed:
+  - onboarding trust and first-session pacing,
+  - realism/replay depth,
+  - learning-evidence credibility,
+  - leadership rollout controls.
+- Objective verification completed successfully (typecheck and e2e).
 
 ## Evidence Summary
 
-- Persona QA matrix: `docs/qa-persona-matrix-2026-03-27.md`
-- Quality gates and scores: `docs/quality-gate-scorecard-2026-03-27.md`
-- Milestone evidence mapping: `docs/milestone-4-evidence-pack-2026-03-27.md`
+- Baseline evaluation: `docs/real-life-6-persona-evaluation-2026-03-27.md`
+- Gap matrix: `docs/bridge-to-perfect-gap-matrix-2026-03-27.md`
+- Feedback-loop log: `docs/real-life-6-persona-feedback-loop-2026-03-27.md`
+- Consolidated remediation mapping: `docs/bridge-to-perfect-consolidated-remediation-2026-03-27.md`
+- Quality scorecard: `docs/quality-gate-scorecard-2026-03-27.md`
+- Milestone mapping: `docs/milestone-4-evidence-pack-2026-03-27.md`
+- Playwright artifacts: `apps/frontend/test-results`
 
 ## Residual Risk Register
 
-1. **Evaluation calibration risk**: fallback remains heuristic and should be calibrated with real transcript samples.
-2. **Execution reliability risk**: staging run quality depends on explicit environment wiring.
-3. **Timing variance risk**: staging interaction timing can vary; keep resilient e2e wait assertions.
+1. **Calibration risk**: deterministic scoring and mentor quality should continue to be calibrated with pilot transcripts.
+2. **Operational risk**: staging/production environment wiring remains a deployment dependency for consistency.
+3. **Scale risk**: expanded controls and evidence flows should be monitored under larger tenant/event volumes.
 
-## Focused Extension Sprint (24-48h)
+## Ongoing Guardrail
 
-1. **Evaluation credibility uplift**
-   - Implement a stronger rubric-driven non-LLM fallback path.
-   - Preserve strict schema validation and structured event logging.
-2. **Mentor usefulness uplift**
-   - Improve mentor generation quality to use explicit scene + user challenge context.
-   - Add concise response quality constraints (actionable, context-bound, non-generic).
-3. **Revalidation and re-score**
-   - Re-run mocked + staging persona suites.
-   - Re-score all five quality gates; release only if all pass.
-
-## Extension Sprint Outcome
-
-- Backend verification:
-  - `npm --workspace @ti-training/backend run typecheck` -> pass
-  - `npm --workspace @ti-training/backend run test` -> pass (`12 passed`, `1 skipped`)
-- Persona verification:
-  - Mocked suite -> `7 passed`, `2 skipped`
-  - Staging suite (explicit Render API URL) -> `2 passed`, `7 skipped`
-- Quality gate result:
-  - All gates `>=4/5` with both critical gates passing.
-
-## Acceptance Retest Criteria
-
-- Mocked suite: pass all mocked persona tests.
-- Staging suite: pass both staging persona tests with explicit backend URL.
-- Quality gates: all five gates score `>=4`, including both critical gates.
-
+- Keep the same strict rule for future acceptance: any section below `4.9/5` in reruns reopens implementation and full re-test.

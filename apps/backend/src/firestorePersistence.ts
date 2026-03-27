@@ -222,4 +222,28 @@ export class FirestorePersistence implements MissionPersistence {
       .doc(id)
       .set(payload, { merge: false });
   }
+
+  async getScenarioRolloutConfig(
+    tenantId: string,
+  ): Promise<Record<string, { enabled: boolean; featured?: boolean; pushRank?: number }> | null> {
+    const doc = await tenantCollection(this.db, tenantId, 'admin_config').doc('scenario_rollout').get();
+    if (!doc.exists) {
+      return null;
+    }
+    const config = doc.data()?.config as unknown;
+    if (!config || typeof config !== 'object') {
+      return null;
+    }
+    return config as Record<string, { enabled: boolean; featured?: boolean; pushRank?: number }>;
+  }
+
+  async setScenarioRolloutConfig(
+    tenantId: string,
+    config: Record<string, { enabled: boolean; featured?: boolean; pushRank?: number }>,
+  ): Promise<void> {
+    const payload = stripUndefinedDeep({ config }) as Record<string, unknown>;
+    await tenantCollection(this.db, tenantId, 'admin_config')
+      .doc('scenario_rollout')
+      .set(payload, { merge: false });
+  }
 }

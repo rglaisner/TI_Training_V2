@@ -56,6 +56,13 @@ export interface MissionPersistence {
     clientSubmissionId: string,
     missionState: MissionState,
   ): Promise<void>;
+  getScenarioRolloutConfig(
+    tenantId: string,
+  ): Promise<Record<string, { enabled: boolean; featured?: boolean; pushRank?: number }> | null>;
+  setScenarioRolloutConfig(
+    tenantId: string,
+    config: Record<string, { enabled: boolean; featured?: boolean; pushRank?: number }>,
+  ): Promise<void>;
 }
 
 function makeCacheKey(
@@ -73,6 +80,10 @@ export class InMemoryPersistence implements MissionPersistence {
   private readonly events = new Map<string, MissionEvent>();
   private readonly decisionCache = new Map<string, MissionState>();
   private readonly mentorCache = new Map<string, MissionState>();
+  private readonly scenarioRolloutConfig = new Map<
+    string,
+    Record<string, { enabled: boolean; featured?: boolean; pushRank?: number }>
+  >();
 
   async getSession(tenantId: string, sessionId: string): Promise<SessionRecord | null> {
     return this.sessions.get(`${tenantId}:${sessionId}`) ?? null;
@@ -177,5 +188,18 @@ export class InMemoryPersistence implements MissionPersistence {
     if (!this.mentorCache.has(key)) {
       this.mentorCache.set(key, missionState);
     }
+  }
+
+  async getScenarioRolloutConfig(
+    tenantId: string,
+  ): Promise<Record<string, { enabled: boolean; featured?: boolean; pushRank?: number }> | null> {
+    return this.scenarioRolloutConfig.get(tenantId) ?? null;
+  }
+
+  async setScenarioRolloutConfig(
+    tenantId: string,
+    config: Record<string, { enabled: boolean; featured?: boolean; pushRank?: number }>,
+  ): Promise<void> {
+    this.scenarioRolloutConfig.set(tenantId, config);
   }
 }

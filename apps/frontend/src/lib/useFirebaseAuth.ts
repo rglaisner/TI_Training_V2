@@ -10,6 +10,17 @@ function isTestAuthBypass(): boolean {
   return process.env.NEXT_PUBLIC_USE_TEST_AUTH === 'true';
 }
 
+const FIREBASE_ENV_KEYS = [
+  'NEXT_PUBLIC_FIREBASE_API_KEY',
+  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
+  'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+  'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+  'NEXT_PUBLIC_FIREBASE_APP_ID',
+] as const;
+
+type AuthMode = 'checking' | 'misconfigured' | 'test_bypass' | 'live_signed_out' | 'live_signed_in';
+
 export interface UseFirebaseAuthResult {
   /** Firebase user when signed in; null when signed out. */
   user: User | null;
@@ -22,6 +33,12 @@ export interface UseFirebaseAuthResult {
   firebaseConfigInvalid: boolean;
   /** True when API calls can proceed without a Firebase user (E2E / local escape hatch only). */
   apiIdentityBypassed: boolean;
+  /** Single source of truth for how identity currently works in this browser session. */
+  authMode: AuthMode;
+  /** Helpful diagnostics for setup troubleshooting in support-led pilots. */
+  diagnostics: {
+    missingEnvKeys: string[];
+  };
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
   signOutUser: () => Promise<void>;
 }
@@ -32,6 +49,10 @@ export function useFirebaseAuth(): UseFirebaseAuthResult {
   const authBootstrapped = useRef(false);
   const previousUid = useRef<string | null>(null);
   const firebaseConfigInvalid = !isFirebaseWebConfigReady();
+  const missingEnvKeys = FIREBASE_ENV_KEYS.filter((key) => {
+    const value = process.env[key];
+    return typeof value !== 'string' || value.trim().length === 0;
+  });
 
   useEffect(() => {
     if (firebaseConfigInvalid) {
@@ -77,6 +98,16 @@ export function useFirebaseAuth(): UseFirebaseAuthResult {
       authReady,
       firebaseConfigInvalid,
       apiIdentityBypassed: isTestAuthBypass(),
+      authMode: !authReady
+        ? 'checking'
+        : firebaseConfigInvalid
+          ? 'misconfigured'
+          : isTestAuthBypass()
+            ? 'test_bypass'
+            : user
+              ? 'live_signed_in'
+              : 'live_signed_out',
+      diagnostics: { missingEnvKeys },
       signInWithEmailPassword,
       signOutUser,
     }),
@@ -86,6 +117,7 @@ export function useFirebaseAuth(): UseFirebaseAuthResult {
       firebaseConfigInvalid,
       signInWithEmailPassword,
       signOutUser,
+      missingEnvKeys,
     ],
   );
 }

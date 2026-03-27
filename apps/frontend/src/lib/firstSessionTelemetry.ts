@@ -1,11 +1,5 @@
-export type FirstSessionEventName =
-  | 'first_session_loaded'
-  | 'first_interaction'
-  | 'scenario_start_clicked'
-  | 'mentor_invoked'
-  | 'mentor_feedback_rated'
-  | 'mission_completed'
-  | 'next_mission_selected';
+import type { FirstSessionEventName } from '@ti-training/shared';
+import { PlatformClient } from './platformClient';
 
 export interface FirstSessionEventPayload {
   event: FirstSessionEventName;
@@ -65,5 +59,24 @@ export function trackFirstSessionEvent(event: Omit<FirstSessionEventPayload, 'ti
     event: 'FIRST_SESSION_TELEMETRY',
     payload,
   });
+}
+
+export async function flushFirstSessionTelemetry(sessionId?: string): Promise<void> {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const events = readEvents();
+  if (events.length === 0) {
+    return;
+  }
+  try {
+    await PlatformClient.ingestFirstSessionTelemetry({
+      sessionId,
+      events,
+    });
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Keep events locally; caller can retry later.
+  }
 }
 

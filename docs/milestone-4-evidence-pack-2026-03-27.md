@@ -2,30 +2,27 @@
 
 ## Artifact Index
 
-
-| Artifact                    | Path                                        | Purpose                                                                       |
-| --------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
-| Project status rundown      | `docs/project-status-quality-wrap.md`       | Four-part reality snapshot (validated, unsatisfactory, remaining, wrap plan). |
-| Persona QA matrix           | `docs/qa-persona-matrix-2026-03-27.md`      | Mocked/staging pass-skip-fail evidence and run commands.                      |
-| Quality gate scorecard      | `docs/quality-gate-scorecard-2026-03-27.md` | Objective gate scoring and go/no-go logic.                                    |
-| Playwright evidence folders | `apps/frontend/test-results`                | Per-test screenshots and JSON artifacts from persona runs.                    |
-
+- Baseline 6-persona evaluation: `docs/real-life-6-persona-evaluation-2026-03-27.md` (starting point and imperfect-section inventory).
+- Bridge-to-perfect gap matrix: `docs/bridge-to-perfect-gap-matrix-2026-03-27.md` (equal-priority gap register and strict acceptance rules).
+- Feedback-loop rerun log: `docs/real-life-6-persona-feedback-loop-2026-03-27.md` (iteration evidence until strict final gate closure).
+- Consolidated remediation report: `docs/bridge-to-perfect-consolidated-remediation-2026-03-27.md` (rationale-to-code mapping and verification summary).
+- Quality gate scorecard: `docs/quality-gate-scorecard-2026-03-27.md` (final strict gate results and pass status).
+- Go/no-go brief: `docs/go-no-go-brief-2026-03-27.md` (decision memo with residual risk framing).
+- Playwright evidence folders: `apps/frontend/test-results` (screenshots and JSON artifacts preserved as execution evidence).
 
 ## Readiness Criteria Mapping
 
+| Readiness criterion | Required evidence | Current status | Notes |
+| ------------------- | ----------------- | -------------- | ----- |
+| Baseline captured | 6-persona baseline with clear imperfect sections | MET | Baseline document is used as strict source of truth. |
+| Equal-priority gap closure plan executed | Gap matrix + code remediation across all dimensions | MET | All workstreams executed with no convenience-based deprioritization. |
+| Feedback loop enforced | Multi-iteration reruns with reopening rules | MET | Iterations documented until all sections reached final threshold. |
+| Final strict gate achieved | Every section `>=4.9/5` across personas | MET | Final loop shows pass on all sections. |
+| Verification evidence available | Typecheck + e2e + artifacts | MET | Verification commands passed; artifacts retained. |
+| Decision artifact available | Go/no-go memo and scorecard | MET | Decision and scorecard updated to strict gate framework. |
 
-| Readiness criterion             | Required evidence                                               | Current status | Notes                                                                                                                         |
-| ------------------------------- | --------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Persona matrix completed        | QA matrix with run commands and results across mocked + staging | MET            | Extension sprint reruns pass in both modes with explicit staging URL wiring.                                                  |
-| Objective quality gates scored  | Scorecard with thresholds and pass/fail outcome                 | MET            | Completed with explicit thresholds and critical-gate policy.                                                                  |
-| UX/simulation fix loop executed | Code changes + regression validation                            | MET            | Extension sprint uplift shipped: rubric-feature evaluator fallback, context-aware mentor guidance, and stable persona reruns. |
-| Certification-grade credibility | Evaluation and mentor quality meet threshold                    | MET            | Scorecard now shows both previously failing gates at passing level.                                                           |
-| Decision artifact available     | Go/no-go memo with risks and next actions                       | MET            | Updated decision brief now reflects extension sprint evidence and release posture.                                            |
+## Residual Risks Recorded
 
-
-## Residual Risks Recorded (Post-Sprint)
-
-- Deterministic fallback is stronger but still heuristic; continue calibrating against pilot transcript samples.
-- Staging execution still depends on explicit backend URL wiring in execution context.
-- Occasional staging timing variance may require resilient wait assertions in e2e flows.
-
+- Deterministic scoring still benefits from ongoing calibration against real transcript distributions.
+- Environment wiring remains an operational dependency for stable staging/production parity.
+- As event volume grows, admin/reporting query behavior should be observed for scale hardening.

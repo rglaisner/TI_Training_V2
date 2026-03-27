@@ -278,14 +278,14 @@ test.describe('Learner personas (mocked API)', () => {
   });
 
   test('starts mission from scenario selection', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/office/desk');
   await expect(page.getByTestId('environment-status-chip')).toBeVisible();
   await page.getByTestId('scenario-card').first().click();
   await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
   });
 
   test('first-run orientation can be dismissed and persona targets are visible', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/office/desk');
   await expect(page.getByTestId('first-run-orientation')).toBeVisible();
   await expect(page.getByTestId('persona-target-line')).toHaveCount(3);
   await page.getByTestId('orientation-continue').click();
@@ -293,7 +293,7 @@ test.describe('Learner personas (mocked API)', () => {
   });
 
   test('scenario list includes a second featured variant card', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/office/desk');
   await expect(page.getByTestId('scenario-card')).toHaveCount(2);
   });
 
@@ -311,7 +311,7 @@ test.describe('Learner personas (mocked API)', () => {
       }),
     });
   });
-  await page.goto('/');
+  await page.goto('/office/desk');
   await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('choice-route_legal_first').click();
   await expect(page.getByTestId('scene-text')).toHaveText(
@@ -348,7 +348,7 @@ test.describe('Learner personas (mocked API)', () => {
       }),
     });
   });
-  await page.goto('/');
+  await page.goto('/office/desk');
   await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('choice-route_legal_first').click();
   await page.getByTestId('open-input').fill('My answer');
@@ -370,7 +370,7 @@ test.describe('Learner personas (mocked API)', () => {
       }),
     });
   });
-  await page.goto('/');
+  await page.goto('/office/desk');
   await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('mentor-button').click();
   await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
@@ -411,7 +411,7 @@ test.describe('Learner personas (mocked API)', () => {
       }),
     });
   });
-  await page.goto('/');
+  await page.goto('/office/desk');
   await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('choice-route_legal_first').click();
   await page.getByTestId('open-input').fill('terminal answer');
@@ -433,7 +433,7 @@ test.describe('Learner personas (mocked API)', () => {
       }),
     });
   });
-  await page.goto('/');
+  await page.goto('/office/desk');
   await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('choice-route_legal_first').click();
   await expect(page.getByTestId('open-input')).toBeVisible();
@@ -487,7 +487,7 @@ test.describe('Learner personas (mocked API)', () => {
     });
   });
 
-  await page.goto('/');
+  await page.goto('/office/desk');
   await page.getByTestId('scenario-card').first().click();
   await page.getByTestId('choice-route_legal_first').click();
 
@@ -596,7 +596,7 @@ test.describe('Learner personas (staging backend)', () => {
   });
 
   test('start mission renders first node HUD', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/office/desk');
     await page.getByTestId('scenario-card').first().click();
     await expect(page.getByTestId('scene-text')).toBeVisible({ timeout: 60_000 });
   });
@@ -614,7 +614,7 @@ test.describe('Learner personas (staging backend)', () => {
     // session (full reload) and try again.
     let lastError: unknown = null;
     for (let missionAttempt = 1; missionAttempt <= 2; missionAttempt += 1) {
-      await page.goto('/');
+      await page.goto('/office/desk');
       await scenarioCard.click();
       await expect(choiceLegalFirst).toBeVisible({ timeout: 60_000 });
 

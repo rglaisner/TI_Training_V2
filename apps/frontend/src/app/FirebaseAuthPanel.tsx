@@ -31,6 +31,8 @@ export default function FirebaseAuthPanel() {
     authReady,
     firebaseConfigInvalid,
     apiIdentityBypassed,
+    authMode,
+    diagnostics,
     signInWithEmailPassword,
     signOutUser,
   } = useFirebaseAuthContext();
@@ -38,7 +40,7 @@ export default function FirebaseAuthPanel() {
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState('');
 
-  if (!authReady) {
+  if (authMode === 'checking' || !authReady) {
     return (
       <section
         className="mt-4 rounded border border-zinc-700 p-4 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
@@ -51,7 +53,7 @@ export default function FirebaseAuthPanel() {
     );
   }
 
-  if (firebaseConfigInvalid) {
+  if (firebaseConfigInvalid || authMode === 'misconfigured') {
     return (
       <section
         className="mt-4 rounded border border-red-900/60 bg-red-950/40 p-4 outline-none focus-visible:ring-2 focus-visible:ring-red-400/60"
@@ -59,11 +61,16 @@ export default function FirebaseAuthPanel() {
         data-office-focus="phone"
         tabIndex={-1}
       >
-        <h2 className="text-lg font-medium text-red-100">Firebase is not configured for this build</h2>
+        <h2 className="text-lg font-medium text-red-100">Identity setup needs attention</h2>
         <p className="mt-2 text-sm leading-relaxed text-red-200/90">
-          The browser bundle is missing valid <code className="rounded bg-red-950/80 px-1">NEXT_PUBLIC_FIREBASE_*</code>{' '}
-          values. They must be set <strong>before</strong> the Next.js build runs (Vercel bakes them into the client).
+          This session cannot use live Firebase sign-in yet. You can still continue through the office hub while setup is
+          being fixed.
         </p>
+        {diagnostics.missingEnvKeys.length > 0 ? (
+          <p className="mt-2 text-xs text-red-200/80">
+            Missing keys: {diagnostics.missingEnvKeys.join(', ')}
+          </p>
+        ) : null}
         <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-red-100/95">
           <li>
             Vercel → your project → <strong>Settings → Environment Variables</strong>: add every key from{' '}
@@ -92,15 +99,16 @@ export default function FirebaseAuthPanel() {
           <Link
             href="/office/hub"
             className="rounded border border-zinc-700 bg-zinc-900/60 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800/60"
+            data-testid="auth-continue-fallback"
           >
-            Continue to office hub
+            Continue in guided fallback mode
           </Link>
         </div>
       </section>
     );
   }
 
-  if (apiIdentityBypassed) {
+  if (apiIdentityBypassed || authMode === 'test_bypass') {
     return (
       <section
         className="mt-4 rounded border border-amber-800/60 bg-amber-950/30 p-4 outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
@@ -110,8 +118,7 @@ export default function FirebaseAuthPanel() {
       >
         <h2 className="text-lg font-medium text-amber-100">Auth (test bypass)</h2>
         <p className="mt-2 text-sm text-amber-200/90">
-          NEXT_PUBLIC_USE_TEST_AUTH is on — the API uses test headers, not Firebase. Turn it off for real
-          Firebase sign-in.
+          `NEXT_PUBLIC_USE_TEST_AUTH` is on. This run uses simulated identity headers instead of real Firebase identity.
         </p>
         <div className="mt-3 flex gap-2 text-xs text-amber-100/90">
           <span className="rounded bg-amber-900/30 px-2 py-1">Safe for demos</span>
@@ -161,6 +168,9 @@ export default function FirebaseAuthPanel() {
       <h2 className="text-lg font-medium">Sign in (Firebase)</h2>
       <p className="mt-2 text-sm text-zinc-400">
         The API requires a real Firebase ID token. Use the same project as the backend service account.
+      </p>
+      <p className="mt-2 text-xs text-zinc-500">
+        If sign-in succeeds but API calls still fail, your account may be missing tenant provisioning claims on the backend.
       </p>
       <div className="mt-3 flex max-w-md flex-col gap-2">
         <label className="text-sm text-zinc-300">

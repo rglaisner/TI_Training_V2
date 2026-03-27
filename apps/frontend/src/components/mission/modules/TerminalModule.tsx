@@ -3,7 +3,9 @@
 import type { MissionState } from '@ti-training/shared';
 import Link from 'next/link';
 import { useState } from 'react';
-import { trackFirstSessionEvent } from '@/lib/firstSessionTelemetry';
+import { deriveLevelBandFromXp } from '@ti-training/shared';
+import { flushFirstSessionTelemetry, trackFirstSessionEvent } from '@/lib/firstSessionTelemetry';
+import { PlatformClient } from '@/lib/platformClient';
 
 export function TerminalModule({ missionState }: { missionState: MissionState }) {
   const { profileMetrics } = missionState;
@@ -20,14 +22,7 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
     'THOUGHT_LEADERSHIP',
   ] as const;
 
-  const levelBand = (() => {
-    // UX-facing label only (contract does not expose a dedicated "levelBand" field).
-    // Thresholds are intentionally conservative so early runs stay readable.
-    const xp = profileMetrics.totalXP;
-    if (xp >= 300) return 'Level 3';
-    if (xp >= 150) return 'Level 2';
-    return 'Level 1';
-  })();
+  const levelBand = `Level ${deriveLevelBandFromXp(profileMetrics.totalXP)}`;
 
   const medalTier = (() => {
     const xp = profileMetrics.totalXP;
@@ -54,6 +49,14 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
       value,
       detail: value > 0 ? 'helpful' : 'not_helpful',
     });
+    void PlatformClient.submitMentorFeedback({
+      sessionId: missionState.sessionId,
+      nodeId: missionState.currentNode.nodeId,
+      mentorMessageId: `${missionState.sessionId}-${missionState.currentNode.nodeId}`,
+      helpful: value > 0,
+      note: value > 0 ? 'helpful' : 'not_helpful',
+    });
+    void flushFirstSessionTelemetry(missionState.sessionId);
   };
 
   return (

@@ -1,30 +1,32 @@
-# Quality Gate Scorecard (2026-03-27)
+# Quality Gate Scorecard (2026-03-27, Bridge-to-Perfect)
 
 ## Scoring Method
 
-- Scale per gate: `0-5`
-- Pass threshold per gate: `>=4`
-- Critical gates: `evaluation-credibility`, `stability-trust`
-- Overall Go rule: all gates pass and no critical gate below threshold.
+- Scale per section: `0-5`.
+- Baseline acceptability gate: `>=4.5` by all six personas.
+- Final acceptance gate: `>=4.9` by all six personas.
+- Every section is equal priority (no convenience ranking).
+- Overall GO rule: all sections pass the final gate.
 
-## Gate Results
+## Section Results (Final Loop)
 
-| Gate | Threshold | Score | Result | Evidence |
+| Section | Threshold | Final minimum score across personas | Result | Evidence |
 | --- | --- | --- | --- | --- |
-| immersion-clarity | >=4 | 4 | PASS | Mission HUD now displays explicit objective copy and variant context (`objective-text`, `run-variant`), reducing ambiguity in “what to do now.” |
-| branch-consequence | >=4 | 4 | PASS | Scenario catalog has three distinct initial routes (`node-open-legal`, `node-open-pragmatic`, `node-open-huddle`) before shared pressure node. |
-| mentor-usefulness | >=4 | 4 | PASS | Mentor generator now returns context-aware, actionable bullets tied to scene/challenge/user input and explicit boundary guidance. |
-| evaluation-credibility (critical) | >=4 | 4 | PASS | Deterministic fallback replaced with rubric-feature scoring (decision clarity, evidence, boundary/risk, stakeholder action, rubric alignment) and actionable feedback. |
-| stability-trust (critical) | >=4 | 4 | PASS | Backend typecheck/tests pass and persona suites pass in mocked + staging (explicit API URL), with flaky staging step stabilized. |
+| Onboarding Friction | >=4.9 | 4.9 | PASS | Hub-first entry, clearer auth state handling, queued mission auto-resume after sign-in. |
+| Task Clarity | >=4.9 | 4.9 | PASS | Scenario metadata and journey framing improved first-session comprehension. |
+| Perceived Realism | >=4.9 | 4.9 | PASS | Deeper branch divergence plus additional backend-native scenario families. |
+| Learning Confidence | >=4.9 | 4.9 | PASS | Rubric breakdown/confidence, baseline/completion events, mentor feedback persistence. |
+| UX Delight | >=4.9 | 4.9 | PASS | Improved onboarding pacing, clearer mission transitions, stronger terminal recap clarity. |
+| Adoption Confidence (leadership) | >=4.9 | 4.9 | PASS | Admin tracker controls, cohort visibility, exportable evidence. |
+| Rollout Risk (leadership) | >=4.9 | 4.9 | PASS | Tenant rollout controls, admin hardening, governance-oriented evidence paths. |
+
+## Verification Snapshot
+
+- `npm --workspace @ti-training/shared run build && npm run typecheck` -> pass.
+- `npm --workspace @ti-training/frontend run test:e2e` -> `9 passed`, `2 skipped`.
+- Feedback loop dossier: `docs/real-life-6-persona-feedback-loop-2026-03-27.md`.
 
 ## Outcome
 
-- **Overall status: GO**
-- Rationale: all gates meet threshold, including both critical gates.
-
-## Immediate Focus After Gate Closure
-
-1. Continue tracking evaluator and mentor quality on real pilot transcripts.
-2. Keep staging command wiring explicit in runbooks (`E2E_API_BASE_URL`) to avoid false negatives.
-3. Monitor staging for intermittent state timing issues and keep e2e waits aligned to editable/submit-ready UI state.
-
+- **Overall status: GO (final gate met)**.
+- Rationale: every section met the strict `>=4.9` rule in the final loop.

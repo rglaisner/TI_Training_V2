@@ -3,7 +3,11 @@ import type {
   AvailableScenariosResponse,
   DecisionRequest,
   DecisionResponse,
+  FirstSessionTelemetryIngestRequest,
+  FirstSessionTelemetryIngestResponse,
   MentorRequest,
+  MentorFeedbackRequest,
+  MentorFeedbackResponse,
   MentorResponse,
   MissionState,
   StartMissionRequest,
@@ -13,6 +17,8 @@ import {
   ApiErrorSchema,
   AvailableScenariosResponseSchema,
   DecisionResponseSchema,
+  FirstSessionTelemetryIngestResponseSchema,
+  MentorFeedbackResponseSchema,
   MentorResponseSchema,
   StartMissionResponseSchema,
   TrackerSummaryResponseSchema,
@@ -60,6 +66,17 @@ function appendTestAuthHeaders(headers: Record<string, string>): void {
   headers['x-role'] = role;
 }
 
+function mapApiMessage(message: string): string {
+  const normalized = message.toLowerCase();
+  if (normalized.includes('missing tenantid') || normalized.includes('custom claim')) {
+    return 'Signed in, but this account is not provisioned for a tenant yet. Ask an admin to apply Firebase tenant claims.';
+  }
+  if (normalized.includes('authorization token is required')) {
+    return 'Sign in is required before this action can continue.';
+  }
+  return message;
+}
+
 async function buildHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
@@ -102,7 +119,7 @@ async function parseError(response: Response, fallback: string): Promise<never> 
 
   const parsed = ApiErrorSchema.safeParse(payload);
   if (parsed.success) {
-    throw new PlatformClientError(parsed.data.message, parsed.data);
+    throw new PlatformClientError(mapApiMessage(parsed.data.message), parsed.data);
   }
 
   console.error({
@@ -188,6 +205,20 @@ export const PlatformClient = {
     return MentorResponseSchema.parse(await safeJson(response));
   },
 
+  async submitMentorFeedback(request: MentorFeedbackRequest): Promise<MentorFeedbackResponse> {
+    const response = await fetch(`${apiBaseUrl}/api/missions/mentor/feedback`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      return parseError(response, 'Mentor feedback submission failed');
+    }
+
+    return MentorFeedbackResponseSchema.parse(await safeJson(response));
+  },
+
   async getTrackerSummary(): Promise<TrackerSummaryResponse> {
     const response = await fetch(`${apiBaseUrl}/api/missions/tracker/summary`, {
       method: 'GET',
@@ -208,6 +239,63 @@ export const PlatformClient = {
       throw new PlatformClientError('Tracker summary response failed validation.');
     }
     return parsed.data;
+  },
+
+  async ingestFirstSessionTelemetry(
+    request: FirstSessionTelemetryIngestRequest,
+  ): Promise<FirstSessionTelemetryIngestResponse> {
+    const response = await fetch(`${apiBaseUrl}/api/telemetry/first-session`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      return parseError(response, 'First-session telemetry ingest failed');
+    }
+
+    return FirstSessionTelemetryIngestResponseSchema.parse(await safeJson(response));
+  },
+
+  async getAdminTenantOverview(): Promise<{ tenantId: string; totalEvents: number; byType: Record<string, number> }> {
+    const response = await fetch(`${apiBaseUrl}/api/admin/tracker/tenant-overview`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+    });
+    if (!response.ok) {
+      return parseError(response, 'Admin tenant overview failed');
+    }
+    const payload = (await safeJson(response)) as unknown;
+    if (!payload || typeof payload !== 'object') {
+      throw new PlatformClientError('Admin tenant overview response failed validation.');
+    }
+    return payload as { tenantId: string; totalEvents: number; byType: Record<string, number> };
+  },
+
+  async getAdminCohorts(): Promise<{ cohorts: Array<{ profileHash: string; eventCount: number }> }> {
+    const response = await fetch(`${apiBaseUrl}/api/admin/tracker/cohorts`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+    });
+    if (!response.ok) {
+      return parseError(response, 'Admin cohorts failed');
+    }
+    const payload = (await safeJson(response)) as unknown;
+    if (!payload || typeof payload !== 'object') {
+      throw new PlatformClientError('Admin cohorts response failed validation.');
+    }
+    return payload as { cohorts: Array<{ profileHash: string; eventCount: number }> };
+  },
+
+  async getAdminEventsCsv(): Promise<string> {
+    const response = await fetch(`${apiBaseUrl}/api/admin/tracker/events/export.csv`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+    });
+    if (!response.ok) {
+      return parseError(response, 'Admin events export failed');
+    }
+    return response.text();
   },
 };
 

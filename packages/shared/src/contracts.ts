@@ -151,6 +151,9 @@ export interface DecisionResponse {
       awardedScore: number; // 0-100
       demonstrated: boolean;
       feedbackText: string;
+      rubricBreakdown?: EvaluationRubricBreakdown;
+      evaluationConfidence?: number;
+      scoringRationaleVersion?: string;
     };
   };
   meta?: {
@@ -177,6 +180,58 @@ export interface MentorResponse {
     turnId: number;
     evaluatedAt: string;
   };
+}
+
+export interface MentorFeedbackRequest {
+  sessionId: string;
+  nodeId: string;
+  mentorMessageId: string;
+  helpful: boolean;
+  note?: string;
+}
+
+export interface MentorFeedbackResponse {
+  accepted: true;
+  recordedAt: string;
+}
+
+export type FirstSessionEventName =
+  | 'first_session_loaded'
+  | 'first_interaction'
+  | 'scenario_start_clicked'
+  | 'mentor_invoked'
+  | 'mentor_feedback_rated'
+  | 'mission_completed'
+  | 'next_mission_selected'
+  | 'auth_panel_state_shown'
+  | 'auth_error_seen'
+  | 'misconfig_retry_clicked'
+  | 'bypass_mode_seen'
+  | 'sign_in_success';
+
+export interface FirstSessionTelemetryItem {
+  event: FirstSessionEventName;
+  timestamp: string;
+  missionId?: string;
+  detail?: string;
+  value?: number;
+}
+
+export interface FirstSessionTelemetryIngestRequest {
+  sessionId?: string;
+  events: FirstSessionTelemetryItem[];
+}
+
+export interface FirstSessionTelemetryIngestResponse {
+  acceptedCount: number;
+}
+
+export interface EvaluationRubricBreakdown {
+  decisionClarity: number;
+  evidenceDiscipline: number;
+  boundaryExplicitness: number;
+  stakeholderActionability: number;
+  rubricAlignment: number;
 }
 
 export const tiCategoryValues = [
@@ -364,6 +419,17 @@ export const DecisionResponseSchema = z.object({
           awardedScore: z.number().min(0).max(100),
           demonstrated: z.boolean(),
           feedbackText: z.string().min(1),
+          rubricBreakdown: z
+            .object({
+              decisionClarity: z.number().min(0).max(1),
+              evidenceDiscipline: z.number().min(0).max(1),
+              boundaryExplicitness: z.number().min(0).max(1),
+              stakeholderActionability: z.number().min(0).max(1),
+              rubricAlignment: z.number().min(0).max(1),
+            })
+            .optional(),
+          evaluationConfidence: z.number().min(0).max(1).optional(),
+          scoringRationaleVersion: z.string().min(1).optional(),
         })
         .optional(),
     })
@@ -399,6 +465,36 @@ export const MentorResponseSchema = z.object({
     .optional(),
 });
 
+export const MentorFeedbackRequestSchema = z.object({
+  sessionId: z.string().min(1),
+  nodeId: z.string().min(1),
+  mentorMessageId: z.string().min(1),
+  helpful: z.boolean(),
+  note: z.string().max(500).optional(),
+});
+
+export const MentorFeedbackResponseSchema = z.object({
+  accepted: z.literal(true),
+  recordedAt: z.string(),
+});
+
+export const FirstSessionTelemetryItemSchema = z.object({
+  event: z.string().min(1),
+  timestamp: z.string().min(1),
+  missionId: z.string().optional(),
+  detail: z.string().optional(),
+  value: z.number().optional(),
+});
+
+export const FirstSessionTelemetryIngestRequestSchema = z.object({
+  sessionId: z.string().optional(),
+  events: z.array(FirstSessionTelemetryItemSchema).min(1).max(100),
+});
+
+export const FirstSessionTelemetryIngestResponseSchema = z.object({
+  acceptedCount: z.number().int().nonnegative(),
+});
+
 export const ApiErrorSchema = z.object({
   code: z.string().min(1),
   message: z.string().min(1),
@@ -420,6 +516,10 @@ export const EventTypeSchema = z.enum([
   'EVALUATION_LLM_ERROR',
   'DECISION_REJECTED',
   'MENTOR_INVOKED',
+  'MENTOR_FEEDBACK_RECORDED',
+  'BASELINE_CAPTURED',
+  'MISSION_COMPLETED',
+  'TELEMETRY_INGESTED',
   'VOICE_TURN_EVALUATED',
   'ADMIN_CONFIG_CHANGED',
 ] as const);
@@ -445,6 +545,17 @@ export const EvaluationCompletedEventSchema = EventBaseSchema.extend({
   feedbackText: z.string().trim().min(1),
   promptVersion: z.string().min(1),
   scoringVersion: z.string().min(1),
+  scoringRationaleVersion: z.string().min(1).optional(),
+  evaluationConfidence: z.number().min(0).max(1).optional(),
+  rubricBreakdown: z
+    .object({
+      decisionClarity: z.number().min(0).max(1),
+      evidenceDiscipline: z.number().min(0).max(1),
+      boundaryExplicitness: z.number().min(0).max(1),
+      stakeholderActionability: z.number().min(0).max(1),
+      rubricAlignment: z.number().min(0).max(1),
+    })
+    .optional(),
   modelId: z.string().min(1).optional(),
   retryAttempted: z.boolean(),
 });
@@ -473,6 +584,32 @@ export const MentorInvokedEventSchema = EventBaseSchema.extend({
   scenarioId: z.string().min(1),
 });
 
+export const MentorFeedbackRecordedEventSchema = EventBaseSchema.extend({
+  eventType: z.literal('MENTOR_FEEDBACK_RECORDED'),
+  scenarioId: z.string().min(1),
+  helpful: z.boolean(),
+  mentorMessageId: z.string().min(1),
+  note: z.string().optional(),
+});
+
+export const BaselineCapturedEventSchema = EventBaseSchema.extend({
+  eventType: z.literal('BASELINE_CAPTURED'),
+  scenarioId: z.string().min(1),
+  baselineTotalXp: z.number(),
+});
+
+export const MissionCompletedEventSchema = EventBaseSchema.extend({
+  eventType: z.literal('MISSION_COMPLETED'),
+  scenarioId: z.string().min(1),
+  xpDelta: z.number(),
+});
+
+export const TelemetryIngestedEventSchema = EventBaseSchema.extend({
+  eventType: z.literal('TELEMETRY_INGESTED'),
+  scenarioId: z.string().min(1),
+  detail: z.string().min(1),
+});
+
 export const VoiceTurnEvaluatedEventSchema = EventBaseSchema.extend({
   eventType: z.literal('VOICE_TURN_EVALUATED'),
   scenarioId: z.string().min(1),
@@ -489,6 +626,10 @@ export const MissionEventSchema = z.union([
   EvaluationLlmErrorEventSchema,
   DecisionRejectedEventSchema,
   MentorInvokedEventSchema,
+  MentorFeedbackRecordedEventSchema,
+  BaselineCapturedEventSchema,
+  MissionCompletedEventSchema,
+  TelemetryIngestedEventSchema,
   VoiceTurnEvaluatedEventSchema,
   AdminConfigChangedEventSchema,
 ]);
@@ -527,5 +668,11 @@ export function normalizeScoreTo100(rawScore: number): {
   }
 
   throw new Error('Score must be in range 0..1 or 0..100');
+}
+
+export function deriveLevelBandFromXp(totalXp: number): number {
+  if (totalXp >= 300) return 3;
+  if (totalXp >= 150) return 2;
+  return 1;
 }
 

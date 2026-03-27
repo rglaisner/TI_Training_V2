@@ -1,8 +1,8 @@
 {
   "persona": "Learner - Voice transcript gating",
   "testTitle": "voice transcript mode requires confirmation before scoring",
-  "status": "skipped",
-  "generatedAt": "2026-03-27T08:28:51.149Z",
+  "status": "passed",
+  "generatedAt": "2026-03-27T16:21:27.841Z",
   "expectedUXChecks": [
     "Submit disabled until transcript is confirmed",
     "Confirmed transcript populates open-input",

@@ -7,10 +7,15 @@ import {
   DecisionResponseSchema,
   AvailableScenariosResponseSchema,
   MentorRequestSchema,
+  MentorFeedbackRequestSchema,
+  MentorFeedbackResponseSchema,
   MentorResponseSchema,
   MissionStateSchema,
+  FirstSessionTelemetryIngestRequestSchema,
+  FirstSessionTelemetryIngestResponseSchema,
   StartMissionRequestSchema,
   StartMissionResponseSchema,
+  deriveLevelBandFromXp,
   type ApiError,
   type AvailableScenariosResponse,
   type DecisionResponse,
@@ -151,19 +156,29 @@ export function createApp(deps: AppDeps) {
 
   app.get('/api/scenarios/available', async (request, reply) => {
     const requestId = randomUUID();
+    let authContext: AuthContext;
     try {
-      await deps.authResolver.resolve(request);
+      authContext = await deps.authResolver.resolve(request);
     } catch (error) {
       sendApiError(reply, parseAuthError(error, requestId), 401);
       return;
     }
 
-    // Tenant-specific enablement can be layered later; for now we return all supported scenarios.
+    const rolloutConfig = await deps.persistence.getScenarioRolloutConfig(authContext.tenantId);
+    const baseScenarios = listSupportedScenarios();
     const payload: AvailableScenariosResponse = {
-      scenarios: listSupportedScenarios().map((s) => ({
-        ...s,
-        // Future: filter or adjust `enabled` based on authContext.tenantId.
-      })),
+      scenarios: baseScenarios.map((scenario) => {
+        const override = rolloutConfig?.[scenario.scenarioId];
+        if (!override) {
+          return scenario;
+        }
+        return {
+          ...scenario,
+          enabled: override.enabled,
+          featured: override.featured ?? scenario.featured,
+          pushRank: override.pushRank ?? scenario.pushRank,
+        };
+      }),
     };
 
     reply.send(AvailableScenariosResponseSchema.parse(payload));
@@ -243,6 +258,19 @@ export function createApp(deps: AppDeps) {
         sessionSeed,
       };
       await deps.persistence.upsertSession(sessionRecord);
+      await deps.persistence.appendEvent({
+        eventType: 'BASELINE_CAPTURED',
+        eventId: randomUUID(),
+        tenantId: authContext.tenantId,
+        timestamp: nowIso(),
+        profileHash: authContext.profileHash,
+        sessionId,
+        nodeId: currentNode.nodeId,
+        turnId: 0,
+        correlationId: requestId,
+        scenarioId: parsed.data.scenarioId,
+        baselineTotalXp: profileMetrics.totalXP,
+      });
 
       const missionState = buildMissionState({
         sessionId,
@@ -401,6 +429,17 @@ export function createApp(deps: AppDeps) {
       let rawScore = 0;
       let rawScale: 'zero_to_one' | 'zero_to_one_hundred' = 'zero_to_one';
       let evaluationTarget: TICompetency = 'ti_data_integrity';
+      let rubricBreakdown:
+        | {
+            decisionClarity: number;
+            evidenceDiscipline: number;
+            boundaryExplicitness: number;
+            stakeholderActionability: number;
+            rubricAlignment: number;
+          }
+        | undefined;
+      let evaluationConfidence: number | undefined;
+      let scoringRationaleVersion: string | undefined;
 
       let nextNodeId: string;
       if (payload.branchingChoice) {
@@ -460,6 +499,9 @@ export function createApp(deps: AppDeps) {
           feedbackText = evaluation.feedbackText;
           rawScore = evaluation.rawScore;
           rawScale = evaluation.rawScale;
+          rubricBreakdown = evaluation.rubricBreakdown;
+          evaluationConfidence = evaluation.evaluationConfidence;
+          scoringRationaleVersion = evaluation.scoringRationaleVersion;
         } catch (error) {
           const msg = error instanceof Error ? error.message : 'Unknown error';
           if (msg.startsWith('GEMINI_EVAL_FAILED')) {
@@ -634,9 +676,28 @@ export function createApp(deps: AppDeps) {
         feedbackText,
         promptVersion: 'v2-design-led',
         scoringVersion: 'v2',
+        scoringRationaleVersion,
+        evaluationConfidence,
+        rubricBreakdown,
         modelId: deps.evaluationModelId,
         retryAttempted: false,
       });
+
+      if (isTerminal) {
+        await deps.persistence.appendEvent({
+          eventType: 'MISSION_COMPLETED',
+          eventId: randomUUID(),
+          tenantId: authContext.tenantId,
+          timestamp: nowIso(),
+          profileHash: authContext.profileHash,
+          sessionId: session.sessionId,
+          nodeId: payload.nodeId,
+          turnId: nextTurnId,
+          correlationId: requestId,
+          scenarioId: session.scenarioId,
+          xpDelta: updatedProfile.totalXP - session.profileMetrics.totalXP,
+        });
+      }
 
       await deps.persistence.setCachedDecision(
         authContext.tenantId,
@@ -661,6 +722,9 @@ export function createApp(deps: AppDeps) {
                   awardedScore,
                   demonstrated,
                   feedbackText,
+                  rubricBreakdown,
+                  evaluationConfidence,
+                  scoringRationaleVersion,
                 },
               }
             : {}),
@@ -834,6 +898,121 @@ export function createApp(deps: AppDeps) {
     },
   );
 
+  app.post(
+    '/api/missions/mentor/feedback',
+    async (request: FastifyRequest<{ Body: unknown }>, reply: FastifyReply) => {
+      const requestId = randomUUID();
+      let authContext: AuthContext;
+      try {
+        authContext = await deps.authResolver.resolve(request);
+      } catch (error) {
+        sendApiError(reply, parseAuthError(error, requestId), 401);
+        return;
+      }
+
+      const parsed = MentorFeedbackRequestSchema.safeParse(request.body);
+      if (!parsed.success) {
+        sendApiError(
+          reply,
+          {
+            code: 'INVALID_MENTOR_FEEDBACK_REQUEST',
+            message: 'Malformed mentor feedback payload',
+            requestId,
+          },
+          422,
+        );
+        return;
+      }
+
+      const payload = parsed.data;
+      const session = await deps.persistence.getSession(authContext.tenantId, payload.sessionId);
+      if (!session || session.userId !== authContext.userId) {
+        sendApiError(
+          reply,
+          {
+            code: 'UNKNOWN_SESSION',
+            message: 'Session not found',
+            requestId,
+          },
+          400,
+        );
+        return;
+      }
+
+      await deps.persistence.appendEvent({
+        eventType: 'MENTOR_FEEDBACK_RECORDED',
+        eventId: randomUUID(),
+        tenantId: authContext.tenantId,
+        timestamp: nowIso(),
+        profileHash: authContext.profileHash,
+        sessionId: session.sessionId,
+        nodeId: payload.nodeId,
+        turnId: session.turnId,
+        correlationId: requestId,
+        scenarioId: session.scenarioId,
+        helpful: payload.helpful,
+        mentorMessageId: payload.mentorMessageId,
+        note: payload.note,
+      });
+
+      reply.code(200).send(
+        MentorFeedbackResponseSchema.parse({
+          accepted: true,
+          recordedAt: nowIso(),
+        }),
+      );
+    },
+  );
+
+  app.post(
+    '/api/telemetry/first-session',
+    async (request: FastifyRequest<{ Body: unknown }>, reply: FastifyReply) => {
+      const requestId = randomUUID();
+      let authContext: AuthContext;
+      try {
+        authContext = await deps.authResolver.resolve(request);
+      } catch (error) {
+        sendApiError(reply, parseAuthError(error, requestId), 401);
+        return;
+      }
+
+      const parsed = FirstSessionTelemetryIngestRequestSchema.safeParse(request.body);
+      if (!parsed.success) {
+        sendApiError(
+          reply,
+          {
+            code: 'INVALID_TELEMETRY_REQUEST',
+            message: 'Malformed telemetry payload',
+            requestId,
+          },
+          422,
+        );
+        return;
+      }
+
+      const accepted = parsed.data.events.length;
+      await deps.persistence.appendEvent({
+        eventType: 'TELEMETRY_INGESTED',
+        eventId: randomUUID(),
+        tenantId: authContext.tenantId,
+        timestamp: nowIso(),
+        profileHash: authContext.profileHash,
+        sessionId: parsed.data.sessionId ?? `telemetry-${requestId}`,
+        nodeId: 'telemetry',
+        turnId: 0,
+        correlationId: requestId,
+        scenarioId: 'telemetry',
+        detail: `accepted_events=${accepted}`,
+      });
+
+      reply.code(200).send(
+        FirstSessionTelemetryIngestResponseSchema.parse({
+          acceptedCount: accepted,
+        }),
+      );
+    },
+  );
+
   app.get('/api/missions/tracker/summary', async (request, reply) => {
     const requestId = randomUUID();
     let authContext: AuthContext;
@@ -850,7 +1029,7 @@ export function createApp(deps: AppDeps) {
       profileHash: authContext.profileHash,
     });
     reply.send({
-      levelBand: 0,
+      levelBand: deriveLevelBandFromXp(profile.totalXP),
       profileMetrics: profile,
       recentEvidence: events.slice(0, 10),
     });
@@ -900,8 +1079,167 @@ export function createApp(deps: AppDeps) {
       from: query.from,
       to: query.to,
     });
-    reply.send({ events });
+    const offsetRaw = Number.parseInt(query.offset ?? '0', 10);
+    const limitRaw = Number.parseInt(query.limit ?? '100', 10);
+    const offset = Number.isFinite(offsetRaw) ? Math.max(0, offsetRaw) : 0;
+    const limit = Number.isFinite(limitRaw) ? Math.min(500, Math.max(1, limitRaw)) : 100;
+    reply.send({
+      events: events.slice(offset, offset + limit),
+      meta: {
+        total: events.length,
+        offset,
+        limit,
+      },
+    });
   });
+
+  app.get('/api/admin/tracker/cohorts', async (request, reply) => {
+    const requestId = randomUUID();
+    let authContext: AuthContext;
+    try {
+      authContext = await deps.authResolver.resolve(request);
+    } catch (error) {
+      sendApiError(reply, parseAuthError(error, requestId), 401);
+      return;
+    }
+    const denied = requireAdmin(authContext, requestId);
+    if (denied) {
+      sendApiError(reply, denied, 403);
+      return;
+    }
+    const events = await deps.persistence.listEvents(authContext.tenantId);
+    const byProfileHash = events.reduce<Record<string, number>>((acc, event) => {
+      acc[event.profileHash] = (acc[event.profileHash] ?? 0) + 1;
+      return acc;
+    }, {});
+    const cohorts = Object.entries(byProfileHash).map(([profileHash, eventCount]) => ({
+      profileHash,
+      eventCount,
+    }));
+    reply.send({ cohorts });
+  });
+
+  app.get('/api/admin/tracker/events/export.csv', async (request, reply) => {
+    const requestId = randomUUID();
+    let authContext: AuthContext;
+    try {
+      authContext = await deps.authResolver.resolve(request);
+    } catch (error) {
+      sendApiError(reply, parseAuthError(error, requestId), 401);
+      return;
+    }
+    const denied = requireAdmin(authContext, requestId);
+    if (denied) {
+      sendApiError(reply, denied, 403);
+      return;
+    }
+    const query = request.query as Record<string, string | undefined>;
+    const events = await deps.persistence.listEvents(authContext.tenantId, {
+      profileHash: query.profileHash,
+      scenarioId: query.scenarioId,
+      nodeId: query.nodeId,
+      from: query.from,
+      to: query.to,
+    });
+    const header = 'timestamp,eventType,scenarioId,nodeId,turnId,profileHash,correlationId';
+    const rows = events.map((event) =>
+      [
+        event.timestamp,
+        event.eventType,
+        event.scenarioId,
+        event.nodeId,
+        String(event.turnId),
+        event.profileHash,
+        event.correlationId,
+      ]
+        .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+        .join(','),
+    );
+    const csv = [header, ...rows].join('\n');
+    reply
+      .header('content-type', 'text/csv; charset=utf-8')
+      .header('content-disposition', 'attachment; filename="tracker-events.csv"')
+      .send(csv);
+  });
+
+  app.get('/api/admin/scenario-rollout', async (request, reply) => {
+    const requestId = randomUUID();
+    let authContext: AuthContext;
+    try {
+      authContext = await deps.authResolver.resolve(request);
+    } catch (error) {
+      sendApiError(reply, parseAuthError(error, requestId), 401);
+      return;
+    }
+    const denied = requireAdmin(authContext, requestId);
+    if (denied) {
+      sendApiError(reply, denied, 403);
+      return;
+    }
+    const config = (await deps.persistence.getScenarioRolloutConfig(authContext.tenantId)) ?? {};
+    reply.send({ config });
+  });
+
+  app.post(
+    '/api/admin/scenario-rollout',
+    async (request: FastifyRequest<{ Body: unknown }>, reply: FastifyReply) => {
+      const requestId = randomUUID();
+      let authContext: AuthContext;
+      try {
+        authContext = await deps.authResolver.resolve(request);
+      } catch (error) {
+        sendApiError(reply, parseAuthError(error, requestId), 401);
+        return;
+      }
+      const denied = requireAdmin(authContext, requestId);
+      if (denied) {
+        sendApiError(reply, denied, 403);
+        return;
+      }
+      if (!request.body || typeof request.body !== 'object') {
+        sendApiError(
+          reply,
+          {
+            code: 'INVALID_ADMIN_CONFIG',
+            message: 'Body must be an object',
+            requestId,
+          },
+          422,
+        );
+        return;
+      }
+      const body = request.body as {
+        config?: Record<string, { enabled: boolean; featured?: boolean; pushRank?: number }>;
+      };
+      if (!body.config || typeof body.config !== 'object') {
+        sendApiError(
+          reply,
+          {
+            code: 'INVALID_ADMIN_CONFIG',
+            message: 'config is required',
+            requestId,
+          },
+          422,
+        );
+        return;
+      }
+
+      await deps.persistence.setScenarioRolloutConfig(authContext.tenantId, body.config);
+      await deps.persistence.appendEvent({
+        eventType: 'ADMIN_CONFIG_CHANGED',
+        eventId: randomUUID(),
+        tenantId: authContext.tenantId,
+        timestamp: nowIso(),
+        profileHash: authContext.profileHash,
+        sessionId: `admin-${requestId}`,
+        nodeId: 'admin_config',
+        turnId: 0,
+        correlationId: requestId,
+        scenarioId: 'admin_rollout',
+      });
+      reply.send({ ok: true });
+    },
+  );
 
   return app;
 }

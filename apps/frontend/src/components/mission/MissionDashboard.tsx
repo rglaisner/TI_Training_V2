@@ -28,6 +28,7 @@ const FALLBACK_SCENARIOS: readonly ScenarioCard[] = [
 ];
 
 const ORIENTATION_STORAGE_KEY = 'ti.firstSession.orientation.dismissed';
+const PENDING_SCENARIO_STORAGE_KEY = 'ti.pendingScenario.start';
 
 interface ScenarioPresentationMeta {
   headline: string;
@@ -49,6 +50,18 @@ const SCENARIO_PRESENTATION: Record<string, ScenarioPresentationMeta> = {
     estimatedTime: '9-12 min',
     difficulty: 'Intermediate',
   },
+  'scenario-2': {
+    headline: 'Repair board-readout trust after capability deck integrity gaps surface.',
+    skills: 'Governance under pressure, cross-functional alignment, correction strategy',
+    estimatedTime: '10-12 min',
+    difficulty: 'Intermediate',
+  },
+  'scenario-3': {
+    headline: 'Decide AI operating-model go/no-go with explicit thresholds and guardrails.',
+    skills: 'Decision governance, risk framing, executive communication',
+    estimatedTime: '10-13 min',
+    difficulty: 'Intermediate',
+  },
 };
 
 const PERSONA_TARGETS = [
@@ -58,7 +71,7 @@ const PERSONA_TARGETS = [
 ] as const;
 
 export default function MissionDashboard() {
-  const { user, authReady, firebaseConfigInvalid, apiIdentityBypassed } = useFirebaseAuthContext();
+  const { user, authReady, firebaseConfigInvalid, apiIdentityBypassed, authMode } = useFirebaseAuthContext();
   const {
     missionState,
     isSubmitting,
@@ -76,6 +89,7 @@ export default function MissionDashboard() {
   const [scenariosError, setScenariosError] = useState<string | null>(null);
   const [showOrientation, setShowOrientation] = useState(false);
   const [firstInteractionTracked, setFirstInteractionTracked] = useState(false);
+  const [pendingScenarioId, setPendingScenarioId] = useState<string | null>(null);
   const firstSessionStartMs = useRef<number>(0);
 
   useEffect(() => {
@@ -125,7 +139,22 @@ export default function MissionDashboard() {
     setShowOrientation(dismissed !== 'true');
     firstSessionStartMs.current = Date.now();
     trackFirstSessionEvent({ event: 'first_session_loaded' });
+    const pending = window.localStorage.getItem(PENDING_SCENARIO_STORAGE_KEY);
+    if (typeof pending === 'string' && pending.trim().length > 0) {
+      setPendingScenarioId(pending);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!authReady || firebaseConfigInvalid || missionState !== null || !pendingScenarioId || !canCallMissionApi) {
+      return;
+    }
+    void startMission(pendingScenarioId);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(PENDING_SCENARIO_STORAGE_KEY);
+    }
+    setPendingScenarioId(null);
+  }, [authReady, canCallMissionApi, firebaseConfigInvalid, missionState, pendingScenarioId, startMission]);
 
   const orderedScenarios = useMemo(() => {
     const withVariant = (() => {
@@ -164,6 +193,13 @@ export default function MissionDashboard() {
       trackFirstSessionEvent({ event: 'first_interaction', missionId: scenarioId, value: elapsedSeconds });
     }
     trackFirstSessionEvent({ event: 'scenario_start_clicked', missionId: scenarioId });
+    if (!canCallMissionApi || firebaseConfigInvalid) {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(PENDING_SCENARIO_STORAGE_KEY, scenarioId);
+      }
+      setPendingScenarioId(scenarioId);
+      return;
+    }
     void startMission(scenarioId);
   };
 
@@ -174,13 +210,16 @@ export default function MissionDashboard() {
     setShowOrientation(false);
   };
 
-  const envStateLabel = firebaseConfigInvalid
-    ? 'Setup required'
-    : apiIdentityBypassed
-      ? 'Test mode'
-      : user
-        ? 'Live mode'
-        : 'Sign-in required';
+  const envStateLabel =
+    authMode === 'misconfigured'
+      ? 'Setup required'
+      : authMode === 'test_bypass'
+        ? 'Test mode'
+        : authMode === 'live_signed_in'
+          ? 'Live mode'
+          : authMode === 'live_signed_out'
+            ? 'Sign-in required'
+            : 'Checking sign-in';
 
   return (
     <div className="bg-zinc-950 p-4 text-zinc-100 sm:p-5">
@@ -208,6 +247,13 @@ export default function MissionDashboard() {
         </p>
       </header>
       <FirebaseAuthPanel />
+      {pendingScenarioId && !canCallMissionApi ? (
+        <section className="mt-4 rounded-lg border border-blue-900/40 bg-blue-950/20 p-4" data-testid="pending-start-banner">
+          <p className="text-sm text-blue-100">
+            Mission start queued for <strong>{pendingScenarioId}</strong>. Sign in to auto-start without losing your intent.
+          </p>
+        </section>
+      ) : null}
       {showOrientation ? (
         <section
           className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/20 p-4"
@@ -218,6 +264,11 @@ export default function MissionDashboard() {
             Expect one focused run in about 10 minutes: pick a route, respond to pressure, and finish with a dossier
             showing what you did well and what to improve next.
           </p>
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-xs text-zinc-200">
+            <li>Choose your scenario route.</li>
+            <li>Respond with evidence and explicit boundaries.</li>
+            <li>Review your dossier and next-step targets.</li>
+          </ol>
           <ul className="mt-3 space-y-1 text-xs text-zinc-200">
             {PERSONA_TARGETS.map((item) => (
               <li key={item.persona} data-testid="persona-target-line">
@@ -276,7 +327,7 @@ export default function MissionDashboard() {
             </div>
           ) : null}
           {authReady && !canCallMissionApi ? (
-            <p className="mt-2 text-sm text-zinc-400">Sign in with Firebase to start a mission.</p>
+            <p className="mt-2 text-sm text-zinc-400">Sign in with Firebase to start a mission. Your selected mission will auto-start after sign-in.</p>
           ) : null}
 
           {statusMessage && isSubmitting ? (
