@@ -41,12 +41,20 @@ export function MissionHUD() {
   const isOpenInputNode = currentNode.type === 'open_input';
   const isBranchingNode = currentNode.type === 'branching';
   const isTerminal = missionState.isTerminal === true;
+  const activeObjective = isTerminal
+    ? 'Review your dossier and competency signal.'
+    : isBranchingNode
+      ? 'Pick the route that you can defend under pressure.'
+      : 'Submit a response with decision, evidence, and explicit boundary.';
 
   return (
     <div>
       <section data-testid="tools-region" className="mt-4 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
         <p data-testid="status-text" className="text-sm text-zinc-300">
           {statusMessage}
+        </p>
+        <p className="mt-2 text-xs text-zinc-400" data-testid="objective-text">
+          Objective: {activeObjective}
         </p>
         <TimerModule isActive={!isTerminal && isOpenInputNode} />
         <ToolsModule currentNode={currentNode} isTerminal={isTerminal} />

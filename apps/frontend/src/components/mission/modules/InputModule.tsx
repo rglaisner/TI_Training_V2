@@ -41,7 +41,8 @@ export function InputModule({
 }: InputModuleProps) {
   const openInputConfig = currentNode.type === 'open_input' ? currentNode.openInputConfig : undefined;
   const canSubmitOpenInput =
-    !voiceEnabled || voiceConfirmedTranscriptText.trim().length > 0;
+    openInputText.trim().length > 0 &&
+    (!voiceEnabled || voiceConfirmedTranscriptText.trim().length > 0);
 
   return (
     <article data-testid="input-region" className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
@@ -72,6 +73,7 @@ export function InputModule({
             className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 p-2 text-sm"
             rows={6}
             disabled={isSubmitting || voiceEnabled}
+            placeholder="Write your decision, boundaries, and evidence in clear business language."
           />
           {voiceEnabled ? (
             <div className="mt-3 rounded-lg border border-zinc-800 bg-black/20 p-3">

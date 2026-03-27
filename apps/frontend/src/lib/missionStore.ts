@@ -57,6 +57,24 @@ function socialMessageId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function mentorChallengeText(state: MissionStore): string {
+  const activeNode = state.missionState?.currentNode;
+  if (!activeNode) {
+    return '';
+  }
+  const lines: string[] = [
+    `Current node: ${activeNode.nodeId} (${activeNode.type})`,
+    `Scene: ${activeNode.sceneText}`,
+  ];
+  if (state.lastEvaluationSummary.trim().length > 0) {
+    lines.push(`Last evaluation: ${state.lastEvaluationSummary}`);
+  }
+  if (state.lastNpcMessage.trim().length > 0) {
+    lines.push(`Latest world reaction: ${state.lastNpcMessage}`);
+  }
+  return lines.join('\n');
+}
+
 export const useMissionStore = create<MissionStore>((set, get) => ({
   missionState: null,
   statusMessage: initialStatusMessage,
@@ -88,7 +106,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   startMission: async (scenarioId: string) => {
     set({
       isSubmitting: true,
-      statusMessage: 'Evaluation running…',
+      statusMessage: 'Loading scenario…',
       errorMessage: '',
       lastEvaluationSummary: '',
       lastNpcMessage: '',
@@ -104,7 +122,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       set({
         missionState,
         isSubmitting: false,
-        statusMessage: 'Waiting for your decision…',
+        statusMessage: 'Scenario live. Choose your first move.',
       });
     } catch (error) {
       set({
@@ -140,6 +158,13 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   submitOpenInput: async () => {
     const state = get();
     if (!state.missionState) {
+      return;
+    }
+    if (state.openInputText.trim().length === 0) {
+      set({
+        errorMessage: 'Your response is empty. Add your decision before submitting.',
+        statusMessage: 'Waiting for your decision…',
+      });
       return;
     }
     set({ isSubmitting: true, statusMessage: 'Evaluation running…', errorMessage: '' });
@@ -249,6 +274,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
         nodeId: state.missionState.currentNode.nodeId,
         clientSubmissionId: clientSubmissionId(),
         userMessage: state.mentorUserMessage.trim() || undefined,
+        challengeText: mentorChallengeText(state),
       });
       const mentorText = response.mentorHint?.message?.trim() ?? '';
       set({
@@ -267,7 +293,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
         voicePartialTranscriptText: '',
         voiceConfirmedTranscriptText: '',
         isSubmitting: false,
-        statusMessage: 'Waiting for your decision…',
+        statusMessage: 'Mentor reply added. Node unchanged until you submit a decision.',
       });
     } catch (error) {
       set({

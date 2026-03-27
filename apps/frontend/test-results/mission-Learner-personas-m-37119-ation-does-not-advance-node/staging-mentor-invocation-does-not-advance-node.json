@@ -2,7 +2,7 @@
   "persona": "Learner - Mentor assist",
   "testTitle": "mentor invocation does not advance node",
   "status": "skipped",
-  "generatedAt": "2026-03-25T14:21:39.478Z",
+  "generatedAt": "2026-03-27T07:44:54.154Z",
   "expectedUXChecks": [
     "Mentor hint appears",
     "Scene does not advance"
