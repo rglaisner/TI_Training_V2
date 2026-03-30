@@ -18,6 +18,9 @@ export default defineConfig({
       NEXT_PUBLIC_USE_TEST_AUTH: 'true',
       NEXT_PUBLIC_TEST_TENANT_ID: 'e2e-tenant',
       NEXT_PUBLIC_TEST_USER_ID: 'e2e-user',
+      // Desk should run the UI prototype so tests can use the demo identity button.
+      // Staging tests are phase-gated/skip-controlled in `mission.spec.ts`.
+      NEXT_PUBLIC_USE_PLATFORM_MISSIONS: process.env.E2E_TARGET === 'staging' ? 'true' : 'false',
       // Relative `/api/...` fetches match page.route by pathname (works with any host:port).
       NEXT_PUBLIC_API_BASE_URL: process.env.E2E_API_BASE_URL ?? '',
       NEXT_PUBLIC_FIREBASE_API_KEY: 'playwright-e2e-placeholder',

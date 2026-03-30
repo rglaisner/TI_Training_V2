@@ -612,11 +612,6 @@ export function createApp(deps: AppDeps) {
               evaluatedAtIso: evaluatedAt,
             })
           : profileAfterXp;
-      await deps.persistence.upsertProfile(
-        authContext.tenantId,
-        authContext.userId,
-        updatedProfile,
-      );
 
       let isTerminal = false;
       let nextNode: NodeContext;
@@ -646,16 +641,6 @@ export function createApp(deps: AppDeps) {
         profileMetrics: updatedProfile,
         isTerminal,
         runMetadata: runMeta,
-      });
-
-      await deps.persistence.upsertSession({
-        ...session,
-        turnId: nextTurnId,
-        currentNodeId: nextNode.nodeId,
-        currentNodeType: nextNode.type,
-        isTerminal,
-        profileMetrics: updatedProfile,
-        sessionSeed,
       });
 
       await deps.persistence.appendEvent({
@@ -698,6 +683,22 @@ export function createApp(deps: AppDeps) {
           xpDelta: updatedProfile.totalXP - session.profileMetrics.totalXP,
         });
       }
+
+      await deps.persistence.upsertProfile(
+        authContext.tenantId,
+        authContext.userId,
+        updatedProfile,
+      );
+
+      await deps.persistence.upsertSession({
+        ...session,
+        turnId: nextTurnId,
+        currentNodeId: nextNode.nodeId,
+        currentNodeType: nextNode.type,
+        isTerminal,
+        profileMetrics: updatedProfile,
+        sessionSeed,
+      });
 
       await deps.persistence.setCachedDecision(
         authContext.tenantId,

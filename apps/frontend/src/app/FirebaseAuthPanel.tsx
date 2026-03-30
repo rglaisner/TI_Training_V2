@@ -118,10 +118,16 @@ export default function FirebaseAuthPanel() {
       >
         <h2 className="text-lg font-medium text-amber-100">Auth (test bypass)</h2>
         <p className="mt-2 text-sm text-amber-200/90">
-          `NEXT_PUBLIC_USE_TEST_AUTH` is on. This run uses simulated identity headers instead of real Firebase identity.
+          `NEXT_PUBLIC_USE_TEST_AUTH` is on. API calls add dev headers (<code className="text-amber-100">x-tenant-id</code>,{' '}
+          <code className="text-amber-100">x-user-id</code>) — there is <strong>no</strong> Firebase login form on purpose.
+        </p>
+        <p className="mt-2 text-xs leading-relaxed text-amber-200/80">
+          The backend must have <code className="rounded bg-amber-900/40 px-1">USE_TEST_AUTH=true</code> and be restarted, or
+          every API call will fail and you will only see <strong>cached placeholder scenarios</strong> (same two cards as the
+          demo copy).
         </p>
         <div className="mt-3 flex gap-2 text-xs text-amber-100/90">
-          <span className="rounded bg-amber-900/30 px-2 py-1">Safe for demos</span>
+          <span className="rounded bg-amber-900/30 px-2 py-1">Dev / E2E only</span>
           <span className="rounded bg-amber-900/30 px-2 py-1">Not production identity</span>
         </div>
       </section>

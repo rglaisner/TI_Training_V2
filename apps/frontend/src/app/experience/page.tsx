@@ -24,8 +24,8 @@ export default function ExperienceLabPage() {
             Design tokens
           </Link>
           <span className="text-zinc-600">·</span>
-          <Link href="/tracker" className="text-emerald-400 hover:text-emerald-300">
-            Personal tracker
+          <Link href="/progress" className="text-emerald-400 hover:text-emerald-300">
+            Progress
           </Link>
         </nav>
 

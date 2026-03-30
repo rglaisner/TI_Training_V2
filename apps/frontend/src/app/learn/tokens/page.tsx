@@ -20,8 +20,8 @@ export default function DesignTokensPage() {
             Experience lab
           </Link>
           <span className="text-zinc-600">·</span>
-          <Link href="/tracker" className="text-cyan-400 hover:text-cyan-300">
-            Tracker
+          <Link href="/progress" className="text-cyan-400 hover:text-cyan-300">
+            Progress
           </Link>
           <span className="text-zinc-600">·</span>
           <Link href="/office/desk" className="text-cyan-400 hover:text-cyan-300">

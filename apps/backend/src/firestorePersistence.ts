@@ -132,9 +132,8 @@ export class FirestorePersistence implements MissionPersistence {
   }
 
   async appendEvent(event: MissionEvent): Promise<void> {
-    await tenantCollection(this.db, event.tenantId, 'events')
-      .doc(event.eventId)
-      .create(event);
+    const payload = stripUndefinedDeep(event) as Record<string, unknown>;
+    await tenantCollection(this.db, event.tenantId, 'events').doc(event.eventId).create(payload);
   }
 
   async listEvents(

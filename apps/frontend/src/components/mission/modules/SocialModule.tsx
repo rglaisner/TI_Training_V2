@@ -13,6 +13,8 @@ export interface SocialModuleProps {
   onMentorUserMessageChange: (value: string) => void;
   onInvokeMentor: () => void;
   socialQueue: readonly SocialQueueItem[];
+  /** Tighter panel for sidebar layout. */
+  compact?: boolean;
 }
 
 export function SocialModule({
@@ -22,12 +24,20 @@ export function SocialModule({
   onMentorUserMessageChange,
   onInvokeMentor,
   socialQueue,
+  compact = false,
 }: SocialModuleProps) {
   return (
-    <article data-testid="social-region" className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-      <h2 className="font-medium text-zinc-200">Mentor</h2>
+    <article
+      data-testid="social-region"
+      className={
+        compact
+          ? 'rounded-lg border border-zinc-700/50 bg-zinc-950/40 p-3'
+          : 'rounded-lg border border-zinc-800 bg-zinc-900/50 p-4'
+      }
+    >
+      <h2 className="text-sm font-medium text-zinc-200">Mentor (optional)</h2>
       <p className="mt-1 text-xs text-zinc-500">
-        Optional: add context or a question, then invoke — answers stay short and Socratic.
+        Side help only — does not advance the mission. Short, Socratic replies.
       </p>
       <textarea
         data-testid="mentor-user-message"

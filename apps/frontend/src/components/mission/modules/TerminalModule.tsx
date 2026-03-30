@@ -1,15 +1,72 @@
 'use client';
 
-import type { MissionState } from '@ti-training/shared';
-import Link from 'next/link';
-import { useState } from 'react';
+import type { MissionState, ProfileTrend, TICompetency } from '@ti-training/shared';
 import { deriveLevelBandFromXp } from '@ti-training/shared';
-import { flushFirstSessionTelemetry, trackFirstSessionEvent } from '@/lib/firstSessionTelemetry';
-import { PlatformClient } from '@/lib/platformClient';
+import Link from 'next/link';
+import { categoryLabel, competencyLabel } from '@/lib/competencyLabels';
 
-export function TerminalModule({ missionState }: { missionState: MissionState }) {
+function formatDemonstrationHint(iso: string): string {
+  const d = new Date(iso);
+  const t = d.getTime();
+  if (!Number.isFinite(t) || t <= 0) {
+    return 'No demonstration on file yet';
+  }
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function trendHint(trend: ProfileTrend): string {
+  switch (trend) {
+    case 'up':
+      return 'Trend: rising';
+    case 'down':
+      return 'Trend: softening';
+    case 'flat':
+      return 'Trend: steady';
+    default: {
+      const _exhaustive: never = trend;
+      return String(_exhaustive);
+    }
+  }
+}
+
+function ScoreBar({ value }: { value: number }) {
+  const clamped = Math.max(0, Math.min(100, value));
+  return (
+    <div
+      className="h-2 w-full overflow-hidden rounded-full bg-zinc-800/90"
+      role="progressbar"
+      aria-valuenow={clamped}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`Score ${clamped} out of 100`}
+    >
+      <div
+        className="h-full rounded-full bg-gradient-to-r from-emerald-800 to-emerald-500 motion-safe:transition-[width] motion-reduce:transition-none"
+        style={{ width: `${clamped}%` }}
+      />
+    </div>
+  );
+}
+
+export interface TerminalModuleProps {
+  missionState: MissionState;
+  /** Learner-facing line from the final scored turn (shown only on debrief, not after intermediate steps). */
+  closingFeedback?: string;
+  /** Same scenario id as current run — triggers a new session with server-side branching on integration. */
+  onRedoSameScenario?: () => void;
+  redoScenarioLabel?: string;
+  /** Clear mission and return to scenario list (e.g. /missions). */
+  onReturnToScenarioList?: () => void;
+}
+
+export function TerminalModule({
+  missionState,
+  closingFeedback,
+  onRedoSameScenario,
+  redoScenarioLabel,
+  onReturnToScenarioList,
+}: TerminalModuleProps) {
   const { profileMetrics } = missionState;
-  const [mentorRated, setMentorRated] = useState(false);
 
   const categoryOrder = [
     'FOUNDATIONS',
@@ -22,6 +79,8 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
     'THOUGHT_LEADERSHIP',
   ] as const;
 
+  const maxCategoryXp = Math.max(1, ...categoryOrder.map((cat) => profileMetrics.categoryXP[cat] ?? 0));
+
   const levelBand = `Level ${deriveLevelBandFromXp(profileMetrics.totalXP)}`;
 
   const medalTier = (() => {
@@ -32,32 +91,11 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
   })();
 
   const topCompetencies = Object.entries(profileMetrics.competencies)
-    .map(([competency, detail]) => ({ competency, ...detail }))
+    .map(([competency, detail]) => ({ competency: competency as TICompetency, ...detail }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 6);
-  const strongest = topCompetencies.slice(0, 2).map((entry) => entry.competency.replaceAll('_', ' '));
-  const weakest = topCompetencies.slice(-2).map((entry) => entry.competency.replaceAll('_', ' '));
-
-  const onMentorRated = (value: number): void => {
-    if (mentorRated) {
-      return;
-    }
-    setMentorRated(true);
-    trackFirstSessionEvent({
-      event: 'mentor_feedback_rated',
-      missionId: missionState.sessionId,
-      value,
-      detail: value > 0 ? 'helpful' : 'not_helpful',
-    });
-    void PlatformClient.submitMentorFeedback({
-      sessionId: missionState.sessionId,
-      nodeId: missionState.currentNode.nodeId,
-      mentorMessageId: `${missionState.sessionId}-${missionState.currentNode.nodeId}`,
-      helpful: value > 0,
-      note: value > 0 ? 'helpful' : 'not_helpful',
-    });
-    void flushFirstSessionTelemetry(missionState.sessionId);
-  };
+  const strongest = topCompetencies.slice(0, 2).map((entry) => competencyLabel(entry.competency));
+  const weakest = topCompetencies.slice(-2).map((entry) => competencyLabel(entry.competency));
 
   return (
     <article
@@ -81,6 +119,11 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
         <p className="mt-1 text-xs text-zinc-300">
           Next improvement targets: {weakest.join(', ') || 'Consistency under pressure'}.
         </p>
+        {closingFeedback?.trim() ? (
+          <p className="mt-3 text-sm text-emerald-200/90" data-testid="last-evaluation">
+            {closingFeedback.trim()}
+          </p>
+        ) : null}
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-emerald-900/30 bg-black/20 p-3">
@@ -93,22 +136,28 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
         </div>
 
         <div className="rounded-lg border border-zinc-800 bg-black/15 p-3">
-          <div className="text-xs font-medium text-zinc-200">Category XP</div>
-          <div className="mt-2 flex flex-wrap gap-2" data-testid="terminal-category-xp">
+          <div className="text-xs font-medium text-zinc-200">Experience by area</div>
+          <p className="mt-1 text-[11px] text-zinc-500">Relative XP earned per program area (this snapshot).</p>
+          <ul className="mt-3 space-y-2" data-testid="terminal-category-xp">
             {categoryOrder.map((cat) => {
               const xp = profileMetrics.categoryXP[cat];
+              const widthPct = Math.round((xp / maxCategoryXp) * 100);
               return (
-                <span
-                  key={cat}
-                  className="rounded-full border border-zinc-700 bg-zinc-950/40 px-2 py-1 text-[11px] text-zinc-200"
-                  title={`${cat} XP`}
-                >
-                  {cat}:{' '}
-                  <span className="font-mono text-[11px] text-emerald-200">{xp}</span>
-                </span>
+                <li key={cat}>
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-zinc-300">
+                    <span>{categoryLabel(cat)}</span>
+                    <span className="tabular-nums text-emerald-200">{xp}</span>
+                  </div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                    <div
+                      className="h-full rounded-full bg-emerald-600/80"
+                      style={{ width: `${widthPct}%` }}
+                    />
+                  </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </div>
       </div>
 
@@ -129,22 +178,27 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
       ) : null}
 
       <div className="mt-4">
-        <div className="text-xs font-medium text-zinc-200">Competency trends</div>
-        <ul data-testid="terminal-competencies" className="mt-2 space-y-2">
+        <div className="text-xs font-medium text-zinc-200">Skill signal (top areas)</div>
+        <p className="mt-1 text-[11px] text-zinc-500">
+          Bars show current score (0–100). Dates reflect the last time this profile recorded a demonstration for that
+          skill.
+        </p>
+        <ul data-testid="terminal-competencies" className="mt-3 space-y-3">
           {topCompetencies.map((c) => (
             <li
               key={c.competency}
-              className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-black/20 px-3 py-2"
+              className="rounded-lg border border-zinc-800 bg-black/20 px-3 py-3"
             >
-              <div className="min-w-0">
-                <div className="truncate font-mono text-[12px] text-zinc-200">{c.competency}</div>
-                <div className="mt-1 text-[11px] text-zinc-500">Last demonstrated: {c.lastDemonstrated}</div>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="font-medium text-sm text-zinc-100">{competencyLabel(c.competency)}</div>
+                <div className="tabular-nums text-sm text-emerald-200">{c.score}/100</div>
               </div>
-              <div className="flex items-end gap-3">
-                <div className="text-right">
-                  <div className="font-mono text-sm text-emerald-200">{c.score}/100</div>
-                  <div className="text-[11px] text-zinc-400">{c.trend}</div>
-                </div>
+              <div className="mt-2">
+                <ScoreBar value={c.score} />
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+                <span>{trendHint(c.trend)}</span>
+                <span>{formatDemonstrationHint(c.lastDemonstrated)}</span>
               </div>
             </li>
           ))}
@@ -156,45 +210,50 @@ export function TerminalModule({ missionState }: { missionState: MissionState })
           No labels earned on this run yet. Your next missions can unlock them as your competency signals stabilize.
         </p>
       ) : null}
-      <div className="mt-4 rounded-lg border border-zinc-800 bg-black/20 p-3">
-        <p className="text-xs font-medium text-zinc-200">Was mentor guidance useful this run?</p>
-        <div className="mt-2 flex gap-2">
+
+      {onRedoSameScenario ? (
+        <div className="mt-4 rounded-lg border border-emerald-800/40 bg-black/25 p-3">
+          <p className="text-xs font-medium text-emerald-100/95">Run this scenario again</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">
+            Same scenario spine — each new start gets a fresh branch and run context from the platform (variant label updates in the HUD). Use this to practice the same mission with different pressure.
+          </p>
           <button
             type="button"
-            className="rounded-md border border-emerald-700/60 bg-emerald-950/30 px-3 py-1 text-xs text-emerald-100 hover:bg-emerald-900/40 disabled:opacity-50"
-            onClick={() => onMentorRated(1)}
-            disabled={mentorRated}
-            data-testid="mentor-rating-helpful"
+            className="mt-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+            data-testid="redo-scenario-button"
+            onClick={() => onRedoSameScenario()}
           >
-            Helpful
-          </button>
-          <button
-            type="button"
-            className="rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
-            onClick={() => onMentorRated(0)}
-            disabled={mentorRated}
-            data-testid="mentor-rating-not-helpful"
-          >
-            Not helpful
+            {redoScenarioLabel ? `Run again · ${redoScenarioLabel}` : 'Run this scenario again'}
           </button>
         </div>
-      </div>
+      ) : null}
+
       <div className="mt-4 flex flex-wrap gap-2">
+        {onReturnToScenarioList ? (
+          <button
+            type="button"
+            className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+            data-testid="next-mission-cta"
+            onClick={() => onReturnToScenarioList()}
+          >
+            Choose another mission
+          </button>
+        ) : (
+          <Link
+            href="/missions"
+            className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+            data-testid="next-mission-cta"
+          >
+            Choose another mission
+          </Link>
+        )}
         <Link
-          href="/office/desk"
-          className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
-          data-testid="next-mission-cta"
-        >
-          Start next mission now
-        </Link>
-        <Link
-          href="/tracker"
+          href="/progress"
           className="rounded-md border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-900/60"
         >
-          Review tracker
+          Review progress
         </Link>
       </div>
     </article>
   );
 }
-

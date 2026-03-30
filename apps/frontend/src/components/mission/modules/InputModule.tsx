@@ -1,13 +1,12 @@
 'use client';
 
-import type { BranchingOption, NodeContext } from '@ti-training/shared';
+import type { BranchingOption } from '@ti-training/shared';
 
 export interface InputModuleProps {
   isSubmitting: boolean;
   isTerminal: boolean;
   isOpenInputNode: boolean;
   isBranchingNode: boolean;
-  currentNode: NodeContext;
   branchingOptions: readonly BranchingOption[];
   openInputText: string;
   onOpenInputTextChange: (value: string) => void;
@@ -26,7 +25,6 @@ export function InputModule({
   isTerminal,
   isOpenInputNode,
   isBranchingNode,
-  currentNode,
   branchingOptions,
   openInputText,
   onOpenInputTextChange,
@@ -39,7 +37,6 @@ export function InputModule({
   onSubmitOpenInput,
   onSubmitBranchingChoice,
 }: InputModuleProps) {
-  const openInputConfig = currentNode.type === 'open_input' ? currentNode.openInputConfig : undefined;
   const canSubmitOpenInput =
     openInputText.trim().length > 0 &&
     (!voiceEnabled || voiceConfirmedTranscriptText.trim().length > 0);
@@ -102,25 +99,6 @@ export function InputModule({
                   Confirm transcript
                 </button>
               </div>
-            </div>
-          ) : null}
-          {openInputConfig ? (
-            <div data-testid="open-input-config" className="mt-3 rounded-lg border border-zinc-800 bg-black/20 p-3">
-              <div className="text-xs font-medium text-zinc-200">Evaluation targets</div>
-              <div data-testid="open-input-target-competencies" className="mt-2 flex flex-wrap gap-2">
-                {openInputConfig.targetCompetencies.map((c) => (
-                  <span key={c} className="rounded border border-zinc-700 bg-zinc-950/60 px-2 py-1 text-[11px] text-zinc-200">
-                    {c}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-3 text-xs font-medium text-zinc-200">Evaluation prompt</div>
-              <pre
-                data-testid="open-input-evaluation-prompt"
-                className="mt-2 whitespace-pre-wrap break-words rounded-md border border-zinc-700 bg-zinc-950/60 p-2 text-xs leading-relaxed text-zinc-300"
-              >
-                {openInputConfig.evaluationPrompt}
-              </pre>
             </div>
           ) : null}
           <button

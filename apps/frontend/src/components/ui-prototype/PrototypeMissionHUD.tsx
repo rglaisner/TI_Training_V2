@@ -1,14 +1,18 @@
 'use client';
 
 import type { NodeContext } from '@ti-training/shared';
-import { useMissionStore } from '@/lib/missionStore';
-import { InputModule } from './modules/InputModule';
-import { SocialModule } from './modules/SocialModule';
-import { TerminalModule } from './modules/TerminalModule';
-import { TimerModule } from './modules/TimerModule';
-import { ToolsModule } from './modules/ToolsModule';
+import { useMemo } from 'react';
+import { getMockAvailableScenarios } from '@/lib/ui-prototype/fixtures';
+import { usePrototypeMissionStore } from '@/lib/ui-prototype/prototypeMissionStore';
+import { InputModule } from '@/components/mission/modules/InputModule';
+import { SocialModule } from '@/components/mission/modules/SocialModule';
+import { TerminalModule } from '@/components/mission/modules/TerminalModule';
+import { TimerModule } from '@/components/mission/modules/TimerModule';
+import { ToolsModule } from '@/components/mission/modules/ToolsModule';
+import { CoworkerInformalExchange } from '@/components/ui-prototype/CoworkerInformalExchange';
 
-export function MissionHUD() {
+/** Mission HUD wired to ui-prototype store (no PlatformClient). @integration-boundary ui-prototype */
+export function PrototypeMissionHUD() {
   const {
     missionState,
     turnCount,
@@ -31,7 +35,25 @@ export function MissionHUD() {
     setVoicePartialTranscriptText,
     confirmVoiceTranscript,
     setMentorUserMessage,
-  } = useMissionStore();
+    activeScenarioId,
+    startMission,
+    resetMission,
+  } = usePrototypeMissionStore();
+
+  const redoScenarioLabel = useMemo(() => {
+    if (!activeScenarioId) {
+      return undefined;
+    }
+    const cards = getMockAvailableScenarios().scenarios;
+    return cards.find((c) => c.scenarioId === activeScenarioId)?.label;
+  }, [activeScenarioId]);
+
+  const scenarioCard = useMemo(() => {
+    if (!activeScenarioId) {
+      return undefined;
+    }
+    return getMockAvailableScenarios().scenarios.find((c) => c.scenarioId === activeScenarioId);
+  }, [activeScenarioId]);
 
   if (!missionState) {
     return null;
@@ -45,10 +67,17 @@ export function MissionHUD() {
   const missionStepTotal = 4;
   const missionStepIndex = Math.min(Math.max(turnCount, 1), 3);
   const stepLabel = `Step ${missionStepIndex} of ${missionStepTotal}`;
+
   if (isTerminal) {
     return (
       <div className="mt-4">
-        <TerminalModule missionState={missionState} closingFeedback={lastEvaluationSummary} />
+        <TerminalModule
+          missionState={missionState}
+          closingFeedback={lastEvaluationSummary}
+          onRedoSameScenario={activeScenarioId ? () => void startMission(activeScenarioId) : undefined}
+          redoScenarioLabel={redoScenarioLabel}
+          onReturnToScenarioList={() => resetMission()}
+        />
       </div>
     );
   }
@@ -58,18 +87,19 @@ export function MissionHUD() {
       <div className="min-w-0 flex-1 space-y-4">
         <article
           data-testid="mission-description-region"
-          className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4"
+          className="rounded-lg border border-white/10 bg-black/40 p-4 backdrop-blur-md"
         >
           <h2 className="font-medium text-zinc-200">Mission</h2>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-            Work through the steps below to complete this scenario.
-          </p>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-300">{scenarioCard?.label ?? 'Training mission'}</p>
           <p className="mt-2 text-xs text-zinc-500">
-            Run context, scores, and dossier appear when you finish — not after each step.
+            Run context and recap appear in your dossier when you finish — focus on this step for now.
           </p>
         </article>
 
-        <article data-testid="tools-region" className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+        <article
+          data-testid="tools-region"
+          className="rounded-lg border border-white/10 bg-black/40 p-4 backdrop-blur-md"
+        >
           <p className="text-xs font-medium uppercase tracking-wide text-emerald-300/90" data-testid="mission-step-label">
             {stepLabel}
           </p>
@@ -94,7 +124,7 @@ export function MissionHUD() {
         </article>
 
         {isOpenInputNode ? (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/35 p-4">
+          <div className="rounded-lg border border-white/10 bg-black/30 p-4 backdrop-blur-md">
             <TimerModule isActive={!isTerminal && isOpenInputNode} />
           </div>
         ) : null}
@@ -118,7 +148,8 @@ export function MissionHUD() {
         />
       </div>
 
-      <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:w-72 lg:max-w-sm" aria-label="Optional mentor">
+      <aside className="w-full shrink-0 space-y-3 lg:sticky lg:top-4 lg:w-72 lg:max-w-sm" aria-label="Optional mission support">
+        <CoworkerInformalExchange layout="aside" />
         <SocialModule
           compact
           isSubmitting={isSubmitting}
@@ -132,4 +163,3 @@ export function MissionHUD() {
     </div>
   );
 }
-

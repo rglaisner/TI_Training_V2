@@ -78,6 +78,11 @@ function mapApiMessage(message: string): string {
     return 'Signed in, but this account is not provisioned for a tenant yet. Ask an admin to apply Firebase tenant claims.';
   }
   if (normalized.includes('authorization token is required')) {
+    if (isBrowserTestAuthEnabled()) {
+      return (
+        'The API refused the request (it wants a Bearer token). You have frontend test-auth on, so either: (1) set USE_TEST_AUTH=true in apps/backend/.env.local and restart the backend, same port as NEXT_PUBLIC_API_BASE_URL; or (2) turn OFF NEXT_PUBLIC_USE_TEST_AUTH and use Firebase sign-in instead. The scenario cards you see may be offline fallbacks, not a live list.'
+      );
+    }
     return 'Sign in is required before this action can continue.';
   }
   return message;

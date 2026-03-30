@@ -2,7 +2,7 @@
   "persona": "Learner - Legal-first flow",
   "testTitle": "branching choice then open-input advances the scene",
   "status": "passed",
-  "generatedAt": "2026-03-27T17:50:29.318Z",
+  "generatedAt": "2026-03-30T08:01:27.764Z",
   "expectedUXChecks": [
     "Branching choices visible",
     "Open-input appears for the next node type",

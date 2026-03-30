@@ -6,7 +6,7 @@
  */
 export default function ChatStagePlaceholder({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="flex h-full min-h-[320px] flex-col bg-zinc-950 text-zinc-100">
+    <div className="flex h-full min-h-[320px] flex-col bg-zinc-950/50 text-zinc-100 backdrop-blur-md">
       <header className="border-b border-zinc-800 px-4 py-3">
         <h1 className="text-lg font-semibold text-zinc-100">{title}</h1>
         <p className="mt-1 text-sm text-zinc-400">{subtitle}</p>
@@ -17,7 +17,7 @@ export default function ChatStagePlaceholder({ title, subtitle }: { title: strin
         aria-label="Chat placeholder"
       >
         <div
-          className="min-h-[200px] flex-1 rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 text-sm text-zinc-500"
+          className="min-h-[200px] flex-1 rounded-lg border border-white/10 bg-black/35 p-3 text-sm text-zinc-400 backdrop-blur-md"
           data-testid="chat-transcript-placeholder"
         >
           <p>Transcript will appear here when chat or voice is connected.</p>

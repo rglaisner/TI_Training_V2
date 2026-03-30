@@ -19,7 +19,7 @@ export function OfficeContentStage({ variant, ariaLabel, children }: OfficeConte
             data-testid="office-stage-monitor"
           >
             <div
-              className="pointer-events-auto relative flex aspect-video w-full min-h-0 flex-col overflow-hidden rounded-md bg-zinc-950 ring-1 ring-white/10"
+              className="pointer-events-auto relative flex aspect-video w-full min-h-0 flex-col overflow-hidden rounded-md bg-zinc-950/65 ring-1 ring-white/10 backdrop-blur-md"
               role="region"
               aria-label={ariaLabel}
               data-testid="office-primary-stage"
@@ -44,7 +44,7 @@ export function OfficeContentStage({ variant, ariaLabel, children }: OfficeConte
             Teammate A
           </div>
           <div
-            className="pointer-events-auto flex min-h-[min(50vh,420px)] flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-950/90 shadow-xl backdrop-blur-md"
+            className="pointer-events-auto flex min-h-[min(50vh,420px)] flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-950/55 shadow-xl backdrop-blur-md"
             role="region"
             aria-label={ariaLabel}
             data-testid="office-primary-stage"
@@ -66,7 +66,7 @@ export function OfficeContentStage({ variant, ariaLabel, children }: OfficeConte
   return (
     <div className="relative z-10 flex min-h-[100dvh] flex-col px-3 pb-24 pt-20 sm:px-8">
       <div
-        className="pointer-events-auto mx-auto mt-2 w-full max-w-4xl flex-1 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/90 shadow-2xl backdrop-blur-md"
+        className="pointer-events-auto mx-auto mt-2 w-full max-w-4xl flex-1 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/55 shadow-2xl backdrop-blur-md"
         role="region"
         aria-label={ariaLabel}
         data-testid="office-primary-stage"

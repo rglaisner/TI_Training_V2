@@ -4,6 +4,7 @@ import Link from 'next/link';
 import FirebaseAuthPanel from '@/app/FirebaseAuthPanel';
 import { useFirebaseAuthContext } from '@/lib/FirebaseAuthContext';
 import { useMissionStore } from '@/lib/missionStore';
+import { MissionCancelControl } from '@/components/ui-prototype/MissionCancelControl';
 import { MissionHUD } from './MissionHUD';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlatformClient, PlatformClientError } from '@/lib/platformClient';
@@ -71,7 +72,12 @@ const FIRST_SESSION_OUTCOMES = [
   'You will leave with a dossier you can compare on the next run.',
 ] as const;
 
-export default function MissionDashboard() {
+export interface MissionDashboardProps {
+  /** `consumer` = rendered under AppShell (no duplicate page chrome). `standalone` = office desk / legacy full page. */
+  layout?: 'standalone' | 'consumer';
+}
+
+export default function MissionDashboard({ layout = 'standalone' }: MissionDashboardProps) {
   const { user, authReady, firebaseConfigInvalid, apiIdentityBypassed, authMode } = useFirebaseAuthContext();
   const {
     missionState,
@@ -84,6 +90,8 @@ export default function MissionDashboard() {
   const canCallMissionApi = apiIdentityBypassed || user !== null;
   const startDisabled =
     isSubmitting || !authReady || !canCallMissionApi || firebaseConfigInvalid || missionState !== null;
+
+  const missionNavLocked = missionState !== null && !missionState.isTerminal;
 
   const [scenarios, setScenarios] = useState<readonly ScenarioCard[]>([]);
   const [scenariosLoading, setScenariosLoading] = useState(false);
@@ -224,29 +232,38 @@ export default function MissionDashboard() {
 
   return (
     <div className="bg-zinc-950 p-4 text-zinc-100 sm:p-5">
-      <header className="border-b border-zinc-800 pb-4">
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">TIC Trainer V2</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Mini-world scenario: three real stances, two open-text beats, one surprise pressure — then dossier.
-        </p>
-        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-200">
-          <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          <span data-testid="environment-status-chip">{envStateLabel}</span>
-        </div>
-        <p className="mt-3 text-xs text-zinc-500">
-          <Link href="/office/hub" className="text-emerald-500 hover:text-emerald-400">
-            Office hub
-          </Link>
-          {' · '}
-          <Link href="/tracker" className="text-emerald-500 hover:text-emerald-400">
-            Tracker
-          </Link>
-          {' · '}
-          <Link href="/experience" className="text-emerald-500 hover:text-emerald-400">
-            Experience lab
-          </Link>
-        </p>
-      </header>
+      {layout === 'standalone' ? (
+        <header className="border-b border-zinc-800 pb-4">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">TIC Trainer V2</h1>
+          <p className="mt-1 text-sm text-zinc-400">
+            Mini-world scenario: three real stances, two open-text beats, one surprise pressure — then dossier.
+          </p>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-200">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <span data-testid="environment-status-chip">{envStateLabel}</span>
+          </div>
+          {missionNavLocked ? (
+            <div className="mt-3 flex flex-wrap items-center gap-3" data-testid="mission-in-progress-strip">
+              <span className="text-xs font-medium text-amber-200/95">Mission in progress</span>
+              <MissionCancelControl variant="workspace" />
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-zinc-500">
+              <Link href="/office/hub" className="text-emerald-500 hover:text-emerald-400">
+                Office hub
+              </Link>
+              {' · '}
+              <Link href="/progress" className="text-emerald-500 hover:text-emerald-400">
+                Progress
+              </Link>
+              {' · '}
+              <Link href="/experience" className="text-emerald-500 hover:text-emerald-400">
+                Experience lab
+              </Link>
+            </p>
+          )}
+        </header>
+      ) : null}
       <FirebaseAuthPanel />
       {pendingScenarioId && !canCallMissionApi ? (
         <section className="mt-4 rounded-lg border border-blue-900/40 bg-blue-950/20 p-4" data-testid="pending-start-banner">

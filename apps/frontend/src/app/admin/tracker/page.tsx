@@ -3,16 +3,20 @@
 import type { ScenarioCard, ScenarioRolloutEntry } from '@ti-training/shared';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import FirebaseAuthPanel from '@/app/FirebaseAuthPanel';
-import { useFirebaseAuthContext } from '@/lib/FirebaseAuthContext';
-import { PlatformClient, PlatformClientError } from '@/lib/platformClient';
+import {
+  getMockAdminCohorts,
+  getMockAdminOverview,
+  getMockAvailableScenarios,
+} from '@/lib/ui-prototype/fixtures';
+import { usePrototypeAuth } from '@/lib/ui-prototype/PrototypeAuthContext';
+import { PrototypeSignInPanel } from '@/components/ui-prototype/PrototypeSignInPanel';
 
 export default function AdminTrackerPage() {
-  const { user, authReady, firebaseConfigInvalid, apiIdentityBypassed } = useFirebaseAuthContext();
-  const canLoad = apiIdentityBypassed || user !== null;
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [overview, setOverview] = useState<{ tenantId: string; totalEvents: number; byType: Record<string, number> } | null>(null);
+  const { viewerRole, user } = usePrototypeAuth();
+  const canView = user !== null && viewerRole === 'tenant_admin';
+  const [overview, setOverview] = useState<
+    { tenantId: string; totalEvents: number; byType: Record<string, number> } | null
+  >(null);
   const [cohorts, setCohorts] = useState<Array<{ profileHash: string; eventCount: number }>>([]);
   const [scenarioCards, setScenarioCards] = useState<readonly ScenarioCard[]>([]);
   const [rolloutDraft, setRolloutDraft] = useState<Record<string, ScenarioRolloutEntry>>({});
@@ -20,57 +24,25 @@ export default function AdminTrackerPage() {
   const [rolloutMessage, setRolloutMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authReady || !canLoad || firebaseConfigInvalid) {
+    if (!canView) {
       return;
     }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setRolloutMessage(null);
-    void Promise.all([
-      PlatformClient.getAdminTenantOverview(),
-      PlatformClient.getAdminCohorts(),
-      PlatformClient.getAvailableScenarios(),
-    ])
-      .then(([tenantOverview, cohortData, available]) => {
-        if (cancelled) return;
-        setOverview(tenantOverview);
-        setCohorts(cohortData.cohorts);
-        setScenarioCards(available.scenarios);
-        const draft: Record<string, ScenarioRolloutEntry> = {};
-        for (const s of available.scenarios) {
-          const entry: ScenarioRolloutEntry = {
-            enabled: s.enabled,
-            featured: s.featured,
-          };
-          if (s.pushRank !== undefined) {
-            entry.pushRank = s.pushRank;
-          }
-          draft[s.scenarioId] = entry;
-        }
-        setRolloutDraft(draft);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        if (err instanceof PlatformClientError) {
-          setError(err.message);
-          return;
-        }
-        if (err instanceof Error) {
-          setError(err.message);
-          return;
-        }
-        setError('Could not load admin tracker.');
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authReady, canLoad, firebaseConfigInvalid]);
+    const tenantOverview = getMockAdminOverview();
+    const cohortData = getMockAdminCohorts();
+    const available = getMockAvailableScenarios();
+    setOverview(tenantOverview);
+    setCohorts(cohortData.cohorts);
+    setScenarioCards(available.scenarios);
+    const draft: Record<string, ScenarioRolloutEntry> = {};
+    for (const s of available.scenarios) {
+      const entry: ScenarioRolloutEntry = { enabled: s.enabled, featured: s.featured };
+      if (s.pushRank !== undefined) {
+        entry.pushRank = s.pushRank;
+      }
+      draft[s.scenarioId] = entry;
+    }
+    setRolloutDraft(draft);
+  }, [canView]);
 
   const patchRollout = (scenarioId: string, patch: Partial<ScenarioRolloutEntry>): void => {
     setRolloutDraft((prev) => {
@@ -85,72 +57,78 @@ export default function AdminTrackerPage() {
   const saveRolloutConfig = async (): Promise<void> => {
     setRolloutSaving(true);
     setRolloutMessage(null);
-    setError(null);
-    try {
-      await PlatformClient.saveScenarioRollout({ config: rolloutDraft });
-      setRolloutMessage('Rollout saved. Learners see updates on the next scenario list load.');
-    } catch (err: unknown) {
-      if (err instanceof PlatformClientError) {
-        setError(err.message);
-        return;
-      }
-      if (err instanceof Error) {
-        setError(err.message);
-        return;
-      }
-      setError('Could not save rollout configuration.');
-    } finally {
-      setRolloutSaving(false);
-    }
+    await new Promise((r) => {
+      window.setTimeout(r, 180);
+    });
+    setRolloutMessage('Prototype: rollout saved in memory only — PlatformClient save arrives post-chunk approval.');
+    setRolloutSaving(false);
   };
 
   const exportCsv = async (): Promise<void> => {
-    try {
-      const csv = await PlatformClient.getAdminEventsCsv();
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'tracker-events.csv';
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Export failed');
-    }
+    const header = 'eventId,eventType,scenarioId\n';
+    const row = 'ev-mock-1,EVALUATION_COMPLETED,scenario-1\n';
+    const csv = `${header}${row}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'tracker-events-prototype.csv';
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <header className="border-b border-zinc-800 pb-5">
-          <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/90">Admin tracker</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/90">Admin · prototype</p>
           <h1 className="mt-2 text-2xl font-semibold">Adoption and rollout evidence</h1>
-          <p className="mt-2 text-sm text-zinc-400">Tenant-level evidence, cohort signals, and export-ready reporting.</p>
+          <p className="mt-2 text-sm text-zinc-400">
+            Control which missions learners can start, what you highlight for pilots, and in what order featured rows
+            appear. Everything below uses mock tenant data until the real control plane is wired.
+          </p>
+          <div className="mt-4 rounded-lg border border-zinc-700 bg-zinc-900/50 p-3 text-xs leading-relaxed text-zinc-400">
+            <p className="font-medium text-zinc-200">Scenario rollout (canary controls)</p>
+            <ul className="mt-2 list-disc space-y-1 pl-4">
+              <li>
+                <strong className="text-zinc-300">Enabled</strong> — learners can see and launch this scenario. Turn off
+                to hide it during pilots or incidents.
+              </li>
+              <li>
+                <strong className="text-zinc-300">Featured</strong> — shows in the “recommended / highlighted” band
+                (must stay enabled).
+              </li>
+              <li>
+                <strong className="text-zinc-300">Push rank</strong> — sort order among <em>featured</em> scenarios:
+                lower numbers surface first (e.g. 0 before 5). Tie-break when two rows share the same rank is
+                implementation-defined; keep ranks unique for predictable ordering.
+              </li>
+            </ul>
+          </div>
           <div className="mt-4 flex gap-2 text-xs">
-            <Link href="/office/hub" className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-900">Office hub</Link>
-            <Link href="/tracker" className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-900">User tracker</Link>
+            <Link href="/office/hub" className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-900">
+              Office hub
+            </Link>
+            <Link href="/progress" className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-900">
+              Progress
+            </Link>
           </div>
         </header>
 
-        <FirebaseAuthPanel />
+        <PrototypeSignInPanel className="mt-6" />
 
-        {!canLoad && authReady && !firebaseConfigInvalid ? (
-          <p className="mt-6 text-sm text-zinc-400">Sign in as tenant admin to access control-plane analytics.</p>
-        ) : null}
-        {error ? <p className="mt-6 rounded border border-red-900/50 bg-red-950/30 p-3 text-sm text-red-200">{error}</p> : null}
-
-        {loading ? <p className="mt-6 text-sm text-zinc-500">Loading admin metrics...</p> : null}
-
-        {rolloutMessage ? (
-          <p className="mt-6 rounded border border-emerald-900/50 bg-emerald-950/25 p-3 text-sm text-emerald-100">{rolloutMessage}</p>
+        {user && !canView ? (
+          <p className="mt-6 text-sm text-amber-200/90">
+            Sign in as <strong>demo admin</strong> to view this surface — or open /missions as a learner.
+          </p>
         ) : null}
 
-        {overview && scenarioCards.length > 0 ? (
+        {!canView ? null : overview && scenarioCards.length > 0 ? (
           <section className="mt-8 rounded border border-zinc-800 bg-zinc-900/30 p-4" data-testid="admin-scenario-rollout">
-            <h2 className="text-sm font-medium text-zinc-200">Scenario rollout (canary controls)</h2>
+            <h2 className="text-sm font-medium text-zinc-200">Adjust flags per scenario</h2>
             <p className="mt-2 text-xs text-zinc-500">
-              Prefer a narrow enabled set during pilot, then widen after stability review. Featured paths surface first in
-              the learner mission picker.
+              Match toggles to your pilot: few enabled items first, then expand. Featured + push rank only affect ordering
+              inside the highlighted set.
             </p>
             <ul className="mt-4 space-y-3">
               {scenarioCards.map((card) => {
@@ -210,12 +188,18 @@ export default function AdminTrackerPage() {
               disabled={rolloutSaving || Object.keys(rolloutDraft).length === 0}
               onClick={() => void saveRolloutConfig()}
             >
-              {rolloutSaving ? 'Saving…' : 'Save rollout to tenant'}
+              {rolloutSaving ? 'Saving…' : 'Save rollout (prototype)'}
             </button>
           </section>
         ) : null}
 
-        {overview ? (
+        {canView && rolloutMessage ? (
+          <p className="mt-6 rounded border border-emerald-900/50 bg-emerald-950/25 p-3 text-sm text-emerald-100">
+            {rolloutMessage}
+          </p>
+        ) : null}
+
+        {canView && overview ? (
           <section className="mt-8 grid gap-3 sm:grid-cols-3">
             <article className="rounded border border-zinc-800 bg-zinc-900/40 p-4">
               <p className="text-xs text-zinc-500">Tenant</p>
@@ -227,19 +211,26 @@ export default function AdminTrackerPage() {
             </article>
             <article className="rounded border border-zinc-800 bg-zinc-900/40 p-4">
               <p className="text-xs text-zinc-500">CSV export</p>
-              <button type="button" onClick={() => void exportCsv()} className="mt-2 rounded bg-emerald-700 px-3 py-1.5 text-xs text-white hover:bg-emerald-600">
-                Download events CSV
+              <button
+                type="button"
+                onClick={() => void exportCsv()}
+                className="mt-2 rounded bg-emerald-700 px-3 py-1.5 text-xs text-white hover:bg-emerald-600"
+              >
+                Download sample CSV
               </button>
             </article>
           </section>
         ) : null}
 
-        {overview ? (
+        {canView && overview ? (
           <section className="mt-8">
             <h2 className="text-sm font-medium text-zinc-300">Event distribution</h2>
             <ul className="mt-3 space-y-2">
               {Object.entries(overview.byType).map(([eventType, count]) => (
-                <li key={eventType} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/30 px-3 py-2 text-sm">
+                <li
+                  key={eventType}
+                  className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/30 px-3 py-2 text-sm"
+                >
                   <span className="font-mono text-xs text-zinc-300">{eventType}</span>
                   <span className="text-emerald-200">{count}</span>
                 </li>
@@ -248,17 +239,22 @@ export default function AdminTrackerPage() {
           </section>
         ) : null}
 
-        <section className="mt-8">
-          <h2 className="text-sm font-medium text-zinc-300">Cohorts</h2>
-          <ul className="mt-3 space-y-2">
-            {cohorts.map((cohort) => (
-              <li key={cohort.profileHash} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/30 px-3 py-2 text-sm">
-                <span className="font-mono text-xs text-zinc-300">{cohort.profileHash}</span>
-                <span className="text-zinc-200">{cohort.eventCount} events</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        {canView ? (
+          <section className="mt-8">
+            <h2 className="text-sm font-medium text-zinc-300">Cohorts</h2>
+            <ul className="mt-3 space-y-2">
+              {cohorts.map((cohort) => (
+                <li
+                  key={cohort.profileHash}
+                  className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/30 px-3 py-2 text-sm"
+                >
+                  <span className="font-mono text-xs text-zinc-300">{cohort.profileHash}</span>
+                  <span className="text-zinc-200">{cohort.eventCount} events</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </div>
     </div>
   );

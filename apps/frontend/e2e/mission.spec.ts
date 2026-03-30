@@ -1,26 +1,11 @@
 import { expect, test } from '@playwright/test';
 import type { Page, TestInfo } from '@playwright/test';
 import fs from 'node:fs/promises';
-import { tiCompetencyValues } from '@ti-training/shared';
 
-const competencies = Object.fromEntries(
-  tiCompetencyValues.map((competency) => [
-    competency,
-    {
-      score: 0,
-      evaluations: 0,
-      lastDemonstrated: new Date(0).toISOString(),
-      trend: 'flat',
-    },
-  ]),
-);
-
-/** Playwright matches RegExp against the full request URL (any host/port). */
-const missionStartUrl = /\/api\/missions\/start(\?|#|$)/;
-const missionDecisionUrl = /\/api\/missions\/decision(\?|#|$)/;
-const missionMentorUrl = /\/api\/missions\/mentor(\?|#|$)/;
-const scenariosAvailableUrl = /\/api\/scenarios\/available(\?|#|$)/;
 const useStaging = process.env.E2E_TARGET === 'staging';
+
+/** Phase 2 UI runs mock missions on /office/desk and /missions — staging backend tests disabled until integration. */
+const STAGING_E2E_DISABLED_FOR_UI_PROTOTYPE = true;
 
 function slugify(name: string): string {
   return name
@@ -167,103 +152,15 @@ async function writePersonaRunArtifacts(params: {
   await page.screenshot({ path: pngPath, fullPage: true });
 }
 
-const openInputNode2 = {
-  nodeId: 'node-open-legal',
-  type: 'open_input',
-  sceneText: 'Legal replies: tighten your note before the CHRO readout.',
-  nextNodeId: 'terminal-1',
-  openInputConfig: {
-    targetCompetencies: ['ti_data_integrity'],
-    evaluationPrompt: 'Evaluate using strict JSON contract.',
-  },
-};
-
-const startResponse = {
-  missionState: {
-    sessionId: 'session-1',
-    currentNode: {
-      nodeId: 'node-1',
-      type: 'branching',
-      sceneText: 'Northbridge Labs hiring freeze — choose your first move.',
-      branchingOptions: [
-        {
-          choiceKey: 'route_legal_first',
-          label: 'Route through Legal first',
-          nextNodeId: 'node-open-legal',
-        },
-        {
-          choiceKey: 'route_pragmatic_ship',
-          label: 'Ship ranges tonight; align Legal tomorrow',
-          nextNodeId: 'node-open-legal',
-        },
-        {
-          choiceKey: 'route_huddle',
-          label: 'Force a leadership huddle now',
-          nextNodeId: 'node-open-legal',
-        },
-      ],
-    },
-    profileMetrics: {
-      categoryScores: {
-        FOUNDATIONS: 0,
-        INFLUENCE: 0,
-        STRATEGY: 0,
-        CRISIS: 0,
-        ETHICS: 0,
-        LEADING_AND_MANAGING: 0,
-        CREATIVE_AND_CRITICAL_THINKING: 0,
-        THOUGHT_LEADERSHIP: 0,
-      },
-      competencies,
-      labelsOfExcellence: [],
-      totalXP: 0,
-      categoryXP: {
-        FOUNDATIONS: 0,
-        INFLUENCE: 0,
-        STRATEGY: 0,
-        CRISIS: 0,
-        ETHICS: 0,
-        LEADING_AND_MANAGING: 0,
-        CREATIVE_AND_CRITICAL_THINKING: 0,
-        THOUGHT_LEADERSHIP: 0,
-      },
-      activeCosmetics: [],
-    },
-    isTerminal: false,
-    runMetadata: { sessionSeed: 42, variantLabel: 'Northbridge • contractor signal +14%' },
-  },
-};
+async function signInDemoLearner(page: Page): Promise<void> {
+  await page.getByTestId('prototype-signin-learner').click();
+}
 
 test.describe('Learner personas (mocked API)', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(() => {
     if (useStaging) {
       test.skip(true, 'Mocked mode only. Set E2E_TARGET=staging to run staging tests.');
     }
-  await page.route(missionStartUrl, async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(startResponse),
-    });
-  });
-
-  await page.route(scenariosAvailableUrl, async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        scenarios: [
-          {
-            scenarioId: 'scenario-1',
-            label: 'NDA Pressure Readout (CHRO) — Mission 1',
-            enabled: true,
-            featured: true,
-            pushRank: 1,
-          },
-        ],
-      }),
-    });
-  });
   });
 
   test.afterEach(async ({ page }, testInfo) => {
@@ -278,237 +175,147 @@ test.describe('Learner personas (mocked API)', () => {
   });
 
   test('starts mission from scenario selection', async ({ page }) => {
-  await page.goto('/office/desk');
-  await expect(page.getByTestId('environment-status-chip')).toBeVisible();
-  await page.getByTestId('scenario-card').first().click();
-  await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await expect(page.getByTestId('environment-status-chip')).toBeVisible();
+    await page.getByTestId('scenario-card').first().click();
+    await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
   });
 
   test('first-run orientation can be dismissed and session outcome lines are visible', async ({ page }) => {
-  await page.goto('/office/desk');
-  await expect(page.getByTestId('first-run-orientation')).toBeVisible();
-  await expect(page.getByTestId('first-session-outcome-line')).toHaveCount(3);
-  await page.getByTestId('orientation-continue').click();
-  await expect(page.getByTestId('first-run-orientation')).toHaveCount(0);
+    await page.addInitScript(() => {
+      window.localStorage.removeItem('ti.prototype.orientation.dismissed');
+    });
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await expect(page.getByTestId('first-run-orientation')).toBeVisible();
+    await expect(page.getByTestId('first-session-outcome-line')).toHaveCount(3);
+    await page.getByTestId('orientation-continue').click();
+    await expect(page.getByTestId('first-run-orientation')).toHaveCount(0);
   });
 
   test('scenario list includes a second featured variant card', async ({ page }) => {
-  await page.goto('/office/desk');
-  await expect(page.getByTestId('scenario-card')).toHaveCount(2);
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await expect(page.getByTestId('scenario-card')).toHaveCount(2);
+  });
+
+  test('in-mission locks consumer shell nav and offers cancel', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('ti.prototype.orientation.dismissed', 'true');
+    });
+    await page.goto('/missions');
+    await signInDemoLearner(page);
+    await page.getByTestId('scenario-card').first().click();
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Mission in progress' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Progress' })).toHaveCount(0);
+    await expect(page.getByTestId('mission-cancel-open')).toHaveCount(1);
+  });
+
+  test('in-mission on desk hides progress link and shows cancel strip', async ({ page }) => {
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await page.getByTestId('scenario-card').first().click();
+    await expect(page.getByTestId('mission-in-progress-strip')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Progress' })).toHaveCount(0);
+    await expect(page.getByTestId('mission-cancel-open')).toHaveCount(1);
+  });
+
+  test('cancel mission confirm returns to scenario list', async ({ page }) => {
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await page.getByTestId('scenario-card').first().click();
+    await page.getByTestId('mission-cancel-open').click();
+    await page.getByTestId('mission-cancel-confirm').click();
+    await expect(page.getByTestId('scenario-card-list')).toBeVisible();
+    await expect(page.getByTestId('scene-text')).toHaveCount(0);
   });
 
   test('branching choice then open-input advances the scene', async ({ page }) => {
-  await page.route(missionDecisionUrl, async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        missionState: {
-          ...startResponse.missionState,
-          currentNode: openInputNode2,
-          isTerminal: false,
-        },
-      }),
-    });
-  });
-  await page.goto('/office/desk');
-  await page.getByTestId('scenario-card').first().click();
-  await page.getByTestId('choice-route_legal_first').click();
-  await expect(page.getByTestId('scene-text')).toHaveText(
-    'Legal replies: tighten your note before the CHRO readout.',
-  );
-  await expect(page.getByTestId('error-banner')).toHaveCount(0);
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await page.getByTestId('scenario-card').first().click();
+    await page.getByTestId('choice-route_legal_first').click();
+    await expect(page.getByTestId('scene-text')).toHaveText(
+      'Legal replies: tighten your note before the CHRO readout.',
+    );
+    await expect(page.getByTestId('error-banner')).toHaveCount(0);
   });
 
   test('invalid evaluation contract shows retry-safe error and no advance on open input', async ({ page }) => {
-  let decisionCalls = 0;
-  await page.route(missionDecisionUrl, async (route) => {
-    decisionCalls += 1;
-    if (decisionCalls === 1) {
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          missionState: {
-            ...startResponse.missionState,
-            currentNode: openInputNode2,
-            isTerminal: false,
-          },
-        }),
-      });
-      return;
-    }
-    await route.fulfill({
-      status: 422,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        code: 'EVAL_JSON_INVALID',
-        message: 'We could not evaluate that turn',
-        requestId: 'r-1',
-      }),
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await page.getByTestId('scenario-card').first().click();
+    await page.getByTestId('choice-route_legal_first').click();
+    await page.getByTestId('open-input').fill('My answer');
+    await page.evaluate(() => {
+      document.body.dataset.tiPrototypeSimulateOpenInput422 = '1';
     });
-  });
-  await page.goto('/office/desk');
-  await page.getByTestId('scenario-card').first().click();
-  await page.getByTestId('choice-route_legal_first').click();
-  await page.getByTestId('open-input').fill('My answer');
-  await page.getByTestId('submit-button').click();
-  await expect(page.getByTestId('error-banner')).toBeVisible();
-  await expect(page.getByTestId('scene-text')).toHaveText(
-    'Legal replies: tighten your note before the CHRO readout.',
-  );
+    await page.getByTestId('submit-button').click();
+    await expect(page.getByTestId('error-banner')).toBeVisible();
+    await expect(page.getByTestId('scene-text')).toHaveText(
+      'Legal replies: tighten your note before the CHRO readout.',
+    );
   });
 
   test('mentor invocation does not advance node', async ({ page }) => {
-  await page.route(missionMentorUrl, async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        missionState: startResponse.missionState,
-        mentorHint: { message: 'Mentor hint message' },
-      }),
-    });
-  });
-  await page.goto('/office/desk');
-  await page.getByTestId('scenario-card').first().click();
-  await page.getByTestId('mentor-button').click();
-  await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
-  await expect(page.getByTestId('mentor-hint-region')).toContainText('Mentor hint message');
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await page.getByTestId('scenario-card').first().click();
+    await page.getByTestId('mentor-button').click();
+    await expect(page.getByTestId('scene-text')).toContainText('Northbridge Labs');
+    await expect(page.getByTestId('mentor-hint-region')).toContainText('Mentor hint message');
   });
 
   test('terminal mission renders dossier section', async ({ page }) => {
-  let decisionCalls = 0;
-  await page.route(missionDecisionUrl, async (route) => {
-    decisionCalls += 1;
-    if (decisionCalls === 1) {
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          missionState: {
-            ...startResponse.missionState,
-            currentNode: openInputNode2,
-            isTerminal: false,
-          },
-        }),
-      });
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        missionState: {
-          ...startResponse.missionState,
-          currentNode: {
-            nodeId: 'terminal-1',
-            type: 'branching',
-            sceneText: 'Terminal scene',
-          },
-          isTerminal: true,
-        },
-      }),
-    });
-  });
-  await page.goto('/office/desk');
-  await page.getByTestId('scenario-card').first().click();
-  await page.getByTestId('choice-route_legal_first').click();
-  await page.getByTestId('open-input').fill('terminal answer');
-  await page.getByTestId('submit-button').click();
-  await expect(page.getByTestId('terminal-dossier')).toBeVisible();
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await page.getByTestId('scenario-card').first().click();
+    await page.getByTestId('choice-route_legal_first').click();
+    await page.getByTestId('open-input').fill('terminal answer');
+    await page.getByTestId('submit-button').click();
+    await expect(page.getByTestId('terminal-dossier')).toBeVisible();
+    await expect(page.getByTestId('last-evaluation')).toContainText(/Score/i);
+    await expect(page.getByTestId('social-region')).toHaveCount(0);
+    await expect(page.getByTestId('coworker-informal-exchange')).toHaveCount(0);
   });
 
   test('after branching, open-input step shows textarea not branching buttons', async ({ page }) => {
-  await page.route(missionDecisionUrl, async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        missionState: {
-          ...startResponse.missionState,
-          currentNode: openInputNode2,
-          isTerminal: false,
-        },
-      }),
-    });
-  });
-  await page.goto('/office/desk');
-  await page.getByTestId('scenario-card').first().click();
-  await page.getByTestId('choice-route_legal_first').click();
-  await expect(page.getByTestId('open-input')).toBeVisible();
-  await expect(page.getByTestId('choice-route_legal_first')).toHaveCount(0);
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await page.getByTestId('scenario-card').first().click();
+    await page.getByTestId('choice-route_legal_first').click();
+    await expect(page.getByTestId('open-input')).toBeVisible();
+    await expect(page.getByTestId('choice-route_legal_first')).toHaveCount(0);
   });
 
   test('voice transcript mode requires confirmation before scoring', async ({ page }) => {
-  let decisionCalls = 0;
-  const partial = 'draft transcript (partial)';
-  const confirmed = 'confirmed transcript (scoring-safe)';
+    const partial = 'draft transcript (partial)';
+    const confirmed = 'confirmed transcript (scoring-safe)';
 
-  await page.route(missionDecisionUrl, async (route) => {
-    decisionCalls += 1;
-    if (decisionCalls === 1) {
-      await route.fulfill({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          missionState: {
-            ...startResponse.missionState,
-            currentNode: openInputNode2,
-            isTerminal: false,
-          },
-        }),
-      });
-      return;
-    }
+    await page.goto('/office/desk');
+    await signInDemoLearner(page);
+    await page.getByTestId('scenario-card').first().click();
+    await page.getByTestId('choice-route_legal_first').click();
 
-    const body = route.request().postDataJSON() as {
-      voice?: { transcriptText?: string };
-      openInput?: { inputText?: string };
-    };
+    await expect(page.getByTestId('open-input')).toBeVisible();
+    await expect(page.getByTestId('mission-timer')).toBeVisible();
 
-    expect(body.voice?.transcriptText).toBe(confirmed);
-    expect(body.openInput?.inputText).toBe(confirmed);
+    const voiceToggle = page.getByTestId('voice-mode-toggle');
+    await voiceToggle.check();
+    await expect(page.getByTestId('submit-button')).toBeDisabled();
 
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        missionState: {
-          ...startResponse.missionState,
-          currentNode: {
-            nodeId: 'terminal-1',
-            type: 'branching',
-            sceneText: 'Terminal scene',
-          },
-          isTerminal: true,
-        },
-      }),
-    });
-  });
+    await page.getByTestId('voice-transcript-partial').fill(partial);
+    await expect(page.getByTestId('submit-button')).toBeDisabled();
 
-  await page.goto('/office/desk');
-  await page.getByTestId('scenario-card').first().click();
-  await page.getByTestId('choice-route_legal_first').click();
+    await page.getByTestId('voice-transcript-partial').fill(confirmed);
+    await page.getByTestId('voice-confirm-transcript').click();
+    await expect(page.getByTestId('submit-button')).toBeEnabled();
+    await expect(page.getByTestId('open-input')).toHaveValue(confirmed);
 
-  await expect(page.getByTestId('open-input')).toBeVisible();
-  await expect(page.getByTestId('mission-timer')).toBeVisible();
-
-  const voiceToggle = page.getByTestId('voice-mode-toggle');
-  await voiceToggle.check();
-  await expect(page.getByTestId('submit-button')).toBeDisabled();
-
-  await page.getByTestId('voice-transcript-partial').fill(partial);
-  await expect(page.getByTestId('submit-button')).toBeDisabled();
-
-  // Confirming transcript should enable scoring and populate the open-input text.
-  await page.getByTestId('voice-transcript-partial').fill(confirmed);
-  await page.getByTestId('voice-confirm-transcript').click();
-  await expect(page.getByTestId('submit-button')).toBeEnabled();
-  await expect(page.getByTestId('open-input')).toHaveValue(confirmed);
-
-  await page.getByTestId('submit-button').click();
-  await expect(page.getByTestId('terminal-dossier')).toBeVisible();
+    await page.getByTestId('submit-button').click();
+    await expect(page.getByTestId('terminal-dossier')).toBeVisible();
   });
 });
 
@@ -521,6 +328,13 @@ test.describe('Learner personas (staging backend)', () => {
   test.beforeEach(async ({ page }) => {
     if (!useStaging) {
       test.skip(true, 'Staging mode only. Set E2E_TARGET=staging to run.');
+    }
+
+    if (STAGING_E2E_DISABLED_FOR_UI_PROTOTYPE) {
+      test.skip(
+        true,
+        'Phase 2 UI prototype: desk uses mock mission store. Re-enable when PlatformClient is wired post chunk approval.',
+      );
     }
 
     const apiBaseUrlRaw = process.env.E2E_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
